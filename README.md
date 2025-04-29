@@ -158,7 +158,7 @@ smart_attendance/
 
 | Home Page            | Register Page         |
 |----------------------|------------------------|
-| ![Index Screenshot](screenshots/index.png) | ![Register Screenshot](screenshots/register.png) |
+| ![Index Screenshot](screenshots/index.png) | ![Register Screenshot](register.png) |
 
 | Attendance Page      | Admin Dashboard       |
 |----------------------|------------------------|
