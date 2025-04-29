@@ -81,6 +81,8 @@ python app.py
 ```
 
 🚀 App will be available at: [https://localhost:5000](https://localhost:5000)
+or it will be available with your ipv4 
+
 
 ---
 
