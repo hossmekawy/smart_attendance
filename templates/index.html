@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="text-center py-10">
+    <h1 class="text-4xl font-bold mb-6">Welcome to Face Recognition Attendance System</h1>
+    
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto mt-10">
+        <a href="/register" class="bg-blue-500 hover:bg-blue-600 text-white p-6 rounded-lg shadow-md transition">
+            <h2 class="text-2xl font-bold mb-2">Register</h2>
+            <p>Register your face for attendance tracking</p>
+        </a>
+        
+        <a href="/attendance" class="bg-green-500 hover:bg-green-600 text-white p-6 rounded-lg shadow-md transition">
+            <h2 class="text-2xl font-bold mb-2">Attendance</h2>
+            <p>Mark your attendance using face recognition</p>
+        </a>
+        
+        <a href="/admin" class="bg-purple-500 hover:bg-purple-600 text-white p-6 rounded-lg shadow-md transition">
+            <h2 class="text-2xl font-bold mb-2">Admin</h2>
+            <p>Manage users and view attendance records</p>
+        </a>
+    </div>
+    
+    <div class="mt-16 max-w-2xl mx-auto bg-white p-6 rounded-lg shadow-md">
+        <h2 class="text-2xl font-bold mb-4">How It Works</h2>
+        <ol class="text-left list-decimal pl-6 space-y-2">
+            <li>Register your face and details in the system</li>
+            <li>Visit the attendance page when you need to mark your presence</li>
+            <li>The system will automatically recognize your face and record your attendance</li>
+            <li>Administrators can view and manage all records</li>
+        </ol>
+    </div>
+    
+    <div class="mt-8 max-w-2xl mx-auto bg-blue-50 p-6 rounded-lg shadow-md">
+        <h2 class="text-2xl font-bold mb-4 text-blue-700">Optimized Performance</h2>
+        <p class="text-left mb-4">
+            Our system uses your device's camera directly in the browser, which provides:
+        </p>
+        <ul class="text-left list-disc pl-6 space-y-2 text-blue-800">
+            <li>Faster response time with reduced lag</li>
+            <li>Lower server load and bandwidth usage</li>
+            <li>Better privacy as images are processed only when needed</li>
+            <li>Improved overall user experience</li>
+        </ul>
+    </div>
+</div>
+{% endblock %}

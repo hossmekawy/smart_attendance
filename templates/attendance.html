@@ -1,0 +1,188 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto" x-data="attendanceSystem()">
+    <h1 class="text-3xl font-bold mb-6">Attendance System</h1>
+    
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="bg-white p-6 rounded-lg shadow-md">
+            <h2 class="text-xl font-bold mb-4">Face Recognition</h2>
+            <div class="relative">
+                <!-- Video element for camera feed -->
+                <video x-ref="video" class="w-full rounded border" autoplay playsinline></video>
+                
+                <!-- Canvas for capturing the image (hidden) -->
+                <canvas x-ref="canvas" style="display: none;"></canvas>
+                
+                <div x-show="recognitionStatus" class="absolute bottom-4 right-4 px-4 py-2 rounded-full shadow-md text-white"
+                     :class="recognizedUser ? 'bg-green-500' : 'bg-yellow-500'">
+                    <span x-text="recognitionStatus"></span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-white p-6 rounded-lg shadow-md">
+            <h2 class="text-xl font-bold mb-4">Attendance Status</h2>
+            
+            <div x-show="!recognizedUser" class="bg-gray-100 p-4 rounded text-center">
+                <p class="text-gray-600">Stand in front of the camera to mark your attendance</p>
+            </div>
+            
+            <div x-show="recognizedUser" class="bg-green-100 p-4 rounded">
+                <h3 class="text-xl font-semibold text-green-800" x-text="'Welcome, ' + recognizedUser.name"></h3>
+                <p class="text-green-700 mt-2" x-text="'Email: ' + recognizedUser.email"></p>
+                <p class="text-green-700 mt-2" x-text="attendanceMessage"></p>
+                <p x-show="attendanceTimestamp" class="text-green-700 mt-2" x-text="'Time: ' + attendanceTimestamp"></p>
+            </div>
+            
+            <div class="mt-6">
+                <h3 class="font-bold mb-2">Instructions:</h3>
+                <ul class="list-disc pl-5 space-y-1">
+                    <li>Position yourself in front of the camera</li>
+                    <li>The system will automatically recognize your face</li>
+                    <li>Your attendance will be recorded once you're recognized</li>
+                    <li>A confirmation message will appear when successful</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Recognition Modal -->
+    <div x-show="showRecognitionModal" x-cloak class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-lg shadow-lg max-w-md w-full"
+             :class="recognizedUser ? 'border-l-4 border-green-500' : 'border-l-4 border-yellow-500'">
+            <h3 class="text-2xl font-bold mb-4" 
+                :class="recognizedUser ? 'text-green-600' : 'text-yellow-600'"
+                x-text="recognizedUser ? 'Attendance Recorded!' : 'Searching...'"></h3>
+            
+            <div x-show="recognizedUser">
+                <p class="mb-2" x-text="'Name: ' + recognizedUser.name"></p>
+                <p class="mb-4" x-text="attendanceMessage"></p>
+            </div>
+            
+            <div x-show="!recognizedUser">
+                <p class="mb-4">Looking for registered faces...</p>
+            </div>
+            
+            <div class="flex justify-end">
+                <button @click="showRecognitionModal = false" 
+                        class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function attendanceSystem() {
+        return {
+            recognizedUser: null,
+            recognitionStatus: '',
+            attendanceMessage: '',
+            attendanceTimestamp: '',
+            showRecognitionModal: false,
+            checkInterval: null,
+            processingImage: false,
+            
+            init() {
+                // Start the camera when component initializes
+                this.startCamera();
+                // Start periodic face checks
+                this.startFaceChecks();
+            },
+            
+            startCamera() {
+                const video = this.$refs.video;
+                
+                // Get access to the camera
+                if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                    navigator.mediaDevices.getUserMedia({ video: true })
+                        .then(stream => {
+                            video.srcObject = stream;
+                        })
+                        .catch(err => {
+                            console.error("Error accessing the camera: ", err);
+                            this.recognitionStatus = "Camera error";
+                        });
+                } else {
+                    this.recognitionStatus = "Camera not supported";
+                }
+            },
+            
+            startFaceChecks() {
+                // Check for faces every 3 seconds
+                this.checkInterval = setInterval(() => {
+                    this.checkFace();
+                }, 3000);
+            },
+            
+            checkFace() {
+                // Don't process if already processing
+                if (this.processingImage) return;
+                
+                const video = this.$refs.video;
+                const canvas = this.$refs.canvas;
+                
+                // Make sure video is playing
+                if (video.readyState !== video.HAVE_ENOUGH_DATA) {
+                    return;
+                }
+                
+                this.processingImage = true;
+                this.recognitionStatus = 'Scanning...';
+                
+                // Set canvas dimensions to match video
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                
+                // Draw the video frame to the canvas
+                const context = canvas.getContext('2d');
+                context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                
+                // Convert canvas to blob and send to server
+                canvas.toBlob(blob => {
+                    const formData = new FormData();
+                    formData.append('image', blob, 'face.jpg');
+                    
+                    fetch('/process_attendance', {
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        this.processingImage = false;
+                        
+                        if (data.recognized) {
+                            this.recognizedUser = data.user;
+                            this.recognitionStatus = 'Recognized';
+                            this.attendanceMessage = data.message;
+                            this.attendanceTimestamp = data.timestamp;
+                            
+                            if (data.timestamp) {
+                                // Show modal only for new attendance
+                                this.showRecognitionModal = true;
+                                // Auto close after 5 seconds
+                                setTimeout(() => {
+                                    this.showRecognitionModal = false;
+                                }, 5000);
+                            }
+                        } else {
+                            if (this.recognizedUser) {
+                                // Keep the last recognized user on screen
+                            } else {
+                                this.recognitionStatus = 'Not recognized';
+                            }
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        this.processingImage = false;
+                        this.recognitionStatus = 'Error';
+                    });
+                }, 'image/jpeg', 0.8); // Lower quality for faster upload
+            }
+        }
+    }
+</script>
+{% endblock %}

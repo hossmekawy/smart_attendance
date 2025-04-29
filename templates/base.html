@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Face Recognition Attendance System</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Alpine.js -->
+    <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        [x-cloak] { display: none !important; }
+        body {
+            font-family: 'Poppins', sans-serif;
+        }
+        .gradient-bg {
+            background: linear-gradient(90deg, #4338ca, #3b82f6);
+        }
+        .nav-link {
+            position: relative;
+            padding: 0.5rem 0;
+            margin: 0 1rem;
+            transition: all 0.3s ease;
+        }
+        .nav-link::after {
+            content: '';
+            position: absolute;
+            width: 0;
+            height: 2px;
+            bottom: 0;
+            left: 0;
+            background-color: white;
+            transition: width 0.3s ease;
+        }
+        .nav-link:hover::after {
+            width: 100%;
+        }
+        .active-link::after {
+            width: 100%;
+        }
+        .card-hover {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .card-hover:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen flex flex-col">
+    <nav class="gradient-bg text-white shadow-lg sticky top-0 z-50" x-data="{ mobileMenuOpen: false }">
+        <div class="container mx-auto px-4 py-3">
+            <div class="flex justify-between items-center">
+                <a href="/" class="flex items-center space-x-3">
+                    <i class="fas fa-id-card text-2xl"></i>
+                    <span class="text-xl font-bold">Face Attendance System</span>
+                </a>
+                
+                <!-- Desktop Navigation -->
+                <div class="hidden md:flex space-x-1">
+                    <a href="/" class="nav-link {{ 'active-link' if request.path == '/' }}">
+                        <i class="fas fa-home mr-1"></i> Home
+                    </a>
+                    <a href="/register" class="nav-link {{ 'active-link' if request.path == '/register' }}">
+                        <i class="fas fa-user-plus mr-1"></i> Register
+                    </a>
+                    <a href="/attendance" class="nav-link {{ 'active-link' if request.path == '/attendance' }}">
+                        <i class="fas fa-clipboard-check mr-1"></i> Attendance
+                    </a>
+                    <a href="/admin" class="nav-link {{ 'active-link' if request.path == '/admin' }}">
+                        <i class="fas fa-cog mr-1"></i> Admin
+                    </a>
+                </div>
+                
+                <!-- Mobile menu button -->
+                <button @click="mobileMenuOpen = !mobileMenuOpen" class="md:hidden text-white focus:outline-none">
+                    <i class="fas fa-bars text-xl"></i>
+                </button>
+            </div>
+            
+            <!-- Mobile Navigation -->
+            <div x-show="mobileMenuOpen" x-cloak 
+                 x-transition:enter="transition ease-out duration-200"
+                 x-transition:enter-start="opacity-0 transform -translate-y-4"
+                 x-transition:enter-end="opacity-100 transform translate-y-0"
+                 x-transition:leave="transition ease-in duration-150"
+                 x-transition:leave-start="opacity-100 transform translate-y-0"
+                 x-transition:leave-end="opacity-0 transform -translate-y-4"
+                 class="md:hidden mt-3 pb-3">
+                <div class="flex flex-col space-y-3">
+                    <a href="/" class="hover:bg-blue-700 px-3 py-2 rounded-md {{ 'bg-blue-700' if request.path == '/' }}">
+                        <i class="fas fa-home mr-2"></i> Home
+                    </a>
+                    <a href="/register" class="hover:bg-blue-700 px-3 py-2 rounded-md {{ 'bg-blue-700' if request.path == '/register' }}">
+                        <i class="fas fa-user-plus mr-2"></i> Register
+                    </a>
+                    <a href="/attendance" class="hover:bg-blue-700 px-3 py-2 rounded-md {{ 'bg-blue-700' if request.path == '/attendance' }}">
+                        <i class="fas fa-clipboard-check mr-2"></i> Attendance
+                    </a>
+                    <a href="/admin" class="hover:bg-blue-700 px-3 py-2 rounded-md {{ 'bg-blue-700' if request.path == '/admin' }}">
+                        <i class="fas fa-cog mr-2"></i> Admin
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container mx-auto px-4 py-6 flex-grow">
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <div class="mb-6 animate__animated animate__fadeIn">
+                    {% for message in messages %}
+                        <div class="bg-blue-50 border-l-4 border-blue-500 text-blue-700 p-4 mb-2 rounded shadow-sm flex items-start">
+                            <i class="fas fa-info-circle mt-1 mr-3"></i>
+                            <div>{{ message }}</div>
+                            <button class="ml-auto focus:outline-none" onclick="this.parentElement.remove()">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="bg-gray-800 text-white py-8 mt-12">
+        <div class="container mx-auto px-4">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div>
+                    <h3 class="text-lg font-semibold mb-4">Face Recognition Attendance</h3>
+                    <p class="text-gray-300 text-sm">
+                        A modern solution for tracking attendance using facial recognition technology.
+                        Secure, efficient, and user-friendly.
+                        for software project
+                        by DR AMANI 
+
+                    </p>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold mb-4">Quick Links</h3>
+                    <ul class="space-y-2 text-gray-300 text-sm">
+                        <li><a href="/" class="hover:text-white"><i class="fas fa-chevron-right mr-2 text-xs"></i>Home</a></li>
+                        <li><a href="/register" class="hover:text-white"><i class="fas fa-chevron-right mr-2 text-xs"></i>Register</a></li>
+                        <li><a href="/attendance" class="hover:text-white"><i class="fas fa-chevron-right mr-2 text-xs"></i>Attendance</a></li>
+                        <li><a href="/admin" class="hover:text-white"><i class="fas fa-chevron-right mr-2 text-xs"></i>Admin</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold mb-4">Contact</h3>
+                    <ul class="space-y-2 text-gray-300 text-sm">
+                        <li class="flex items-start">
+                            <i class="fas fa-envelope mt-1 mr-3"></i>
+                            <span>hussienmekawy38@gmail.com</span>
+                        </li>
+                        <li class="flex items-start">
+                            <i class="fas fa-phone mt-1 mr-3"></i>
+                            <span>+20 1099641402</span>
+                        </li>
+                        <li class="flex items-start">
+                            <i class="fas fa-map-marker-alt mt-1 mr-3"></i>
+                            <span>DELTA UNI FOR SCEINCE AND TECHNOLOGY</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            <div class="border-t border-gray-700 mt-8 pt-6 flex flex-col md:flex-row justify-between items-center">
+                <p class="text-sm text-gray-400">
+                    &copy; 2025 Face Recognition Attendance System. All rights reserved to HAMLA.
+                </p>
+                <div class="flex space-x-4 mt-4 md:mt-0">
+                    <a href="https://github.com/hossmekawy" class="text-gray-400 hover:text-white transition-colors">
+                        <i class="fab fa-facebook-f"></i>
+                    </a>
+                    <a href="https://github.com/hossmekawy" class="text-gray-400 hover:text-white transition-colors">
+                        <i class="fab fa-twitter"></i>
+                    </a>
+                    <a href="https://github.com/hossmekawy" class="text-gray-400 hover:text-white transition-colors">
+                        <i class="fab fa-linkedin-in"></i>
+                    </a>
+                    <a href="https://github.com/hossmekawy" class="text-gray-400 hover:text-white transition-colors">
+                        <i class="fab fa-github"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Back to top button -->
+    <button 
+        id="backToTop" 
+        class="fixed bottom-6 right-6 bg-blue-600 text-white rounded-full p-3 shadow-lg opacity-0 transition-opacity duration-300 hover:bg-blue-700 focus:outline-none"
+        onclick="window.scrollTo({top: 0, behavior: 'smooth'})"
+    >
+        <i class="fas fa-arrow-up"></i>
+    </button>
+
+    <script>
+        // Back to top button visibility
+        window.addEventListener('scroll', function() {
+            const backToTopButton = document.getElementById('backToTop');
+            if (window.scrollY > 300) {
+                backToTopButton.classList.remove('opacity-0');
+                backToTopButton.classList.add('opacity-100');
+            } else {
+                backToTopButton.classList.remove('opacity-100');
+                backToTopButton.classList.add('opacity-0');
+            }
+        });
+    </script>
+</body>
+</html>
