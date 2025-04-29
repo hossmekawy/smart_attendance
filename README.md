@@ -66,10 +66,8 @@ source venv/bin/activate
 pip install --upgrade pip
 
 # 4. Install dependencies
-pip install numpy==1.22.3
-pip install Flask==2.0.1 Werkzeug==2.0.1 Jinja2==3.0.1 itsdangerous==2.0.1 MarkupSafe==2.0.1
-pip install opencv-python-headless==4.5.5.64
-pip install face_recognition==1.3.0 dlib Flask-SQLAlchemy==2.5.1
+pip install -r requirements.txt
+
 
 # (Optional) Fix for dlib - Windows
 pip install https://github.com/jloh02/dlib/releases/download/v19.22/dlib-19.22.99-cp310-cp310-win_amd64.whl
