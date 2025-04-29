@@ -12,6 +12,7 @@ A modern, web-based attendance tracking system powered by **facial recognition t
 - 🖥️ [Usage Guide](#-usage-guide)  
 - 🔧 [Technical Details](#-technical-details)  
 - 🗂️ [Project Structure](#-project-structure)  
+- 📸 [Screenshots](#-screenshots)  
 - 🤝 [Contributing](#-contributing)  
 - 📄 [License](#-license)  
 
@@ -41,7 +42,7 @@ A modern, web-based attendance tracking system powered by **facial recognition t
 ## 🚀 Installation
 
 ### ✅ Prerequisites
-- Python **3.8 only** (required for compatibility)
+- Python **3.8.16 only** (required for compatibility)
 - pip
 - Git
 
@@ -52,7 +53,7 @@ A modern, web-based attendance tracking system powered by **facial recognition t
 git clone https://github.com/hossmekawy/smart_attendance.git
 cd smart_attendance
 
-# 2. Create virtual environment using Python 3.8
+# 2. Create virtual environment using Python 3.8.16
 python3.8 -m venv venv
 
 # Activate (Windows)
@@ -80,9 +81,8 @@ openssl req -x509 -newkey rsa:4096 -nodes -out cert.pem -keyout key.pem -days 36
 python app.py
 ```
 
-🚀 App will be available at: [https://localhost:5000](https://localhost:5000)
-or it will be available with your ipv4 
-
+🚀 App will be available at: [https://localhost:5000](https://localhost:5000)  
+🌐 Or access it using your local IPv4 address.
 
 ---
 
@@ -151,6 +151,18 @@ smart_attendance/
 ├── key.pem             # SSL key
 └── requirements.txt    # Dependencies
 ```
+
+---
+
+## 📸 Screenshots
+
+| Home Page            | Register Page         |
+|----------------------|------------------------|
+| ![Index Screenshot](screenshots/index.png) | ![Register Screenshot](screenshots/register.png) |
+
+| Attendance Page      | Admin Dashboard       |
+|----------------------|------------------------|
+| ![Attendance Screenshot](screenshots/attendance.png) | ![Admin Screenshot](screenshots/admin.png) |
 
 ---
 
