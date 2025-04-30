@@ -1,0 +1,101 @@
+{% extends "courses/base_courses.html" %}
+
+{% block course_content %}
+<div class="mb-6">
+    <a href="{{ url_for('courses.course_lectures', course_id=lecture.course_id) }}" class="text-blue-600 hover:text-blue-800">
+        <i class="fas fa-arrow-left mr-1"></i> Back to Lectures
+    </a>
+</div>
+
+<div class="bg-white rounded-xl shadow-md overflow-hidden">
+    <div class="p-2 bg-gradient-to-r from-blue-500 to-indigo-600"></div>
+    <div class="p-6">
+        <h1 class="text-3xl font-bold text-gray-800 mb-6">Edit Lecture</h1>
+        <p class="text-gray-600 mb-6">Course: {{ course.name }} ({{ course.code }})</p>
+        
+        <form method="POST" action="{{ url_for('courses.edit_lecture', lecture_id=lecture.id) }}">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="md:col-span-2">
+                    <label for="title" class="block text-sm font-medium text-gray-700 mb-1">Lecture Title</label>
+                    <input type="text" name="title" id="title" required value="{{ lecture.title }}"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                
+                <div>
+                    <label for="week_number" class="block text-sm font-medium text-gray-700 mb-1">Week Number</label>
+                    <input type="number" name="week_number" id="week_number" required min="1" max="52" value="{{ lecture.week_number }}"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                
+                <div>
+                    <label for="location" class="block text-sm font-medium text-gray-700 mb-1">Location (Optional)</label>
+                    <input type="text" name="location" id="location" value="{{ lecture.location or '' }}"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                
+                <div>
+                    <label for="date" class="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                    <input type="date" name="date" id="date" required value="{{ lecture.start_time.strftime('%Y-%m-%d') }}"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label for="start_time" class="block text-sm font-medium text-gray-700 mb-1">Start Time</label>
+                        <input type="time" name="start_time" id="start_time" required value="{{ lecture.start_time.strftime('%H:%M') }}"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    
+                    <div>
+                        <label for="end_time" class="block text-sm font-medium text-gray-700 mb-1">End Time</label>
+                        <input type="time" name="end_time" id="end_time" required value="{{ lecture.end_time.strftime('%H:%M') }}"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mt-6 flex justify-end space-x-3">
+                <button type="button" onclick="confirmDelete('{{ lecture.id }}', '{{ lecture.title }}')" class="px-4 py-2 bg-red-600 text-white rounded-lg shadow hover:bg-red-700 transition">
+                    <i class="fas fa-trash mr-2"></i>Delete Lecture
+                </button>
+                <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg shadow hover:bg-blue-700 transition">
+                    <i class="fas fa-save mr-2"></i>Save Changes
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div id="deleteModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center hidden z-50">
+    <div class="bg-white rounded-lg shadow-xl p-6 max-w-md w-full">
+        <h3 class="text-xl font-bold text-gray-900 mb-4">Confirm Deletion</h3>
+        <p class="text-gray-700 mb-6">
+            Are you sure you want to delete the lecture "<span id="lectureName"></span>"? 
+            This action cannot be undone and will remove all attendance records for this lecture.
+        </p>
+        <div class="flex justify-end space-x-3">
+            <button onclick="closeDeleteModal()" class="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 transition">
+                Cancel
+            </button>
+            <form id="deleteForm" method="POST" action="{{ url_for('courses.delete_lecture', lecture_id=lecture.id) }}">
+                <button type="submit" class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition">
+                    Delete
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function confirmDelete(lectureId, lectureName) {
+        document.getElementById('lectureName').textContent = lectureName;
+        document.getElementById('deleteModal').classList.remove('hidden');
+    }
+    
+    function closeDeleteModal() {
+        document.getElementById('deleteModal').classList.add('hidden');
+    }
+</script>
+{% endblock %}

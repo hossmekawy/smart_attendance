@@ -1,0 +1,73 @@
+{% extends "courses/base_courses.html" %}
+
+{% block course_content %}
+<div class="mb-6">
+    <a href="{{ url_for('courses.course_materials', course_id=course.id) }}" class="text-blue-600 hover:text-blue-800">
+        <i class="fas fa-arrow-left mr-1"></i> Back to Materials
+    </a>
+</div>
+
+<div class="mb-6">
+    <h1 class="text-3xl font-bold text-gray-800">Edit Material</h1>
+    <p class="text-gray-600">{{ course.name }} ({{ course.code }})</p>
+</div>
+
+<div class="bg-white rounded-lg shadow-md overflow-hidden">
+    <div class="px-6 py-4">
+        <form method="POST" enctype="multipart/form-data">
+            <div class="mb-4">
+                <label for="title" class="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                <input type="text" id="title" name="title" value="{{ material.title }}" required
+                       class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+            </div>
+            
+            <div class="mb-4">
+                <label for="description" class="block text-sm font-medium text-gray-700 mb-1">Description (Optional)</label>
+                <textarea id="description" name="description" rows="3"
+                          class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">{{ material.description }}</textarea>
+            </div>
+            
+            <div class="mb-4">
+                <label for="week_number" class="block text-sm font-medium text-gray-700 mb-1">Week Number</label>
+                <input type="number" id="week_number" name="week_number" value="{{ material.week_number }}" min="1" required
+                       class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+            </div>
+            
+            <div class="mb-4">
+                <label for="lecture_id" class="block text-sm font-medium text-gray-700 mb-1">Associated Lecture (Optional)</label>
+                <select id="lecture_id" name="lecture_id"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    <option value="none">None</option>
+                    {% for lecture in lectures %}
+                    <option value="{{ lecture.id }}" {% if material.lecture_id == lecture.id %}selected{% endif %}>
+                        Week {{ lecture.week_number }}: {{ lecture.title }} ({{ lecture.start_time.strftime('%d %b %Y') }})
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="mb-4">
+                <label for="file" class="block text-sm font-medium text-gray-700 mb-1">Replace File (Optional)</label>
+                <input type="file" id="file" name="file"
+                       class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                <p class="text-sm text-gray-500 mt-1">
+                    Current file: {{ material.file_path.split('/')[-1] }}
+                </p>
+                <p class="text-sm text-gray-500 mt-1">
+                    Allowed file types: {{ ", ".join(config['ALLOWED_EXTENSIONS']) }}
+                </p>
+            </div>
+            
+            <div class="flex justify-end space-x-3 mt-6">
+                <a href="{{ url_for('courses.course_materials', course_id=course.id) }}" 
+                   class="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 transition">
+                    Cancel
+                </a>
+                <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition">
+                    Update Material
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

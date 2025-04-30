@@ -1,0 +1,445 @@
+{% extends "courses/base_courses.html" %}
+
+{% block course_content %}
+<div class="mb-6">
+    <a href="{{ url_for('courses.view_course', course_id=course.id) }}" class="text-blue-600 hover:text-blue-800">
+        <i class="fas fa-arrow-left mr-1"></i> Back to {{ course.name }}
+    </a>
+</div>
+
+<div class="bg-white rounded-xl shadow-md overflow-hidden mb-8">
+    <div class="p-2 bg-gradient-to-r from-blue-500 to-indigo-600"></div>
+    <div class="p-6">
+        <div class="flex justify-between items-start">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-800">{{ lecture.title }}</h1>
+                <p class="text-gray-600 mt-1">
+                    {{ course.name }} ({{ course.code }}) - Week {{ lecture.week_number }}
+                </p>
+            </div>
+            <span class="text-sm bg-blue-100 text-blue-800 px-3 py-1 rounded-full">
+                {{ lecture.day_of_week }}
+            </span>
+        </div>
+        
+        <div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="bg-gray-50 p-3 rounded-lg">
+                <div class="text-sm text-gray-500">Date & Time</div>
+                <div class="font-medium">
+                    {{ lecture.start_time.strftime('%d %b %Y, %I:%M %p') }} - 
+                    {{ lecture.end_time.strftime('%I:%M %p') }}
+                </div>
+            </div>
+            
+            {% if lecture.location %}
+            <div class="bg-gray-50 p-3 rounded-lg">
+                <div class="text-sm text-gray-500">Location</div>
+                <div class="font-medium">{{ lecture.location }}</div>
+            </div>
+            {% endif %}
+            
+            <div class="bg-gray-50 p-3 rounded-lg">
+                <div class="text-sm text-gray-500">Status</div>
+                <div class="font-medium">
+                    {% if lecture.is_active() %}
+                        <span class="text-green-600">
+                            <i class="fas fa-circle text-xs animate-pulse mr-1"></i> 
+                            In Progress
+                        </span>
+                    {% elif lecture.start_time > now %}
+                        <span class="text-blue-600">
+                            <i class="fas fa-clock mr-1"></i> 
+                            Upcoming
+                        </span>
+                    {% else %}
+                        <span class="text-gray-600">
+                            <i class="fas fa-check-circle mr-1"></i> 
+                            Completed
+                        </span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        {% if current_user.is_admin %}
+        <div class="mt-4 flex space-x-2">
+            <a href="{{ url_for('courses.edit_lecture', lecture_id=lecture.id) }}" class="px-3 py-1 bg-blue-600 text-white rounded text-sm">
+                <i class="fas fa-edit mr-1"></i> Edit Lecture
+            </a>
+            <a href="{{ url_for('courses.lecture_attendance', lecture_id=lecture.id) }}" class="px-3 py-1 bg-green-600 text-white rounded text-sm">
+                <i class="fas fa-clipboard-check mr-1"></i> View Attendance
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Attendance Section -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+    <div class="lg:col-span-2">
+        {% if lecture.is_active() and not attendance_marked and not current_user.is_admin %}
+        <div class="bg-white rounded-lg shadow-md overflow-hidden mb-8" id="attendance-section">
+            <div class="bg-green-600 text-white px-4 py-2 font-medium flex justify-between items-center">
+                <span>Mark Attendance</span>
+                <button id="toggle-camera" class="text-sm bg-white text-green-600 px-2 py-1 rounded">
+                    Start Camera
+                </button>
+            </div>
+            <div class="p-4">
+                <div id="camera-off" class="text-center py-8">
+                    <i class="fas fa-camera text-4xl text-gray-400 mb-2"></i>
+                    <p class="text-gray-600">Click "Start Camera" to mark your attendance for this lecture</p>
+                </div>
+                
+                <div id="camera-on" class="hidden">
+                    <div class="relative">
+                        <video id="video" class="w-full h-auto rounded-lg" autoplay></video>
+                        <canvas id="canvas" class="hidden"></canvas>
+                        <div id="loading-indicator" class="hidden absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded-lg">
+                            <div class="text-white text-center">
+                                <i class="fas fa-spinner fa-spin text-2xl"></i>
+                                <p class="mt-2">Processing...</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4 text-center">
+                        <button id="capture-btn" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition">
+                            <i class="fas fa-camera mr-2"></i> Capture and Submit
+                        </button>
+                    </div>
+                    
+                    <div id="result-message" class="mt-4 hidden"></div>
+                </div>
+            </div>
+        </div>
+        {% elif attendance_marked %}
+        <div class="bg-green-50 border-l-4 border-green-500 text-green-700 p-4 rounded mb-8">
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    <i class="fas fa-check-circle mt-1"></i>
+                </div>
+                <div class="ml-3">
+                    <p class="font-medium">Attendance Marked</p>
+                    <p class="text-sm">You have successfully marked your attendance for this lecture.</p>
+                </div>
+            </div>
+        </div>
+        {% elif not lecture.is_active() and not attendance_marked and not current_user.is_admin %}
+        <div class="bg-yellow-50 border-l-4 border-yellow-500 text-yellow-700 p-4 rounded mb-8">
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    <i class="fas fa-exclamation-triangle mt-1"></i>
+                </div>
+                <div class="ml-3">
+                    <p class="font-medium">Attendance Unavailable</p>
+                    <p class="text-sm">
+                        {% if lecture.start_time > now %}
+                            Attendance can only be marked during the lecture time.
+                        {% else %}
+                            The lecture has ended and you did not mark your attendance.
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- Lecture Materials -->
+        <h2 class="text-2xl font-bold text-gray-800 mb-4">Lecture Materials</h2>
+        
+        {% if materials %}
+            <div class="bg-white rounded-lg shadow-md overflow-hidden">
+                <div class="p-4">
+                    <div class="divide-y divide-gray-200">
+                        {% for material in materials|sort(attribute='title') %}
+                        <div class="py-3 {% if loop.first %}pt-0{% endif %} {% if loop.last %}pb-0{% endif %}">
+                            <div class="flex items-start">
+                                <div class="mr-3">
+                                    {% if material.file_type == 'pdf' %}
+                                        <i class="fas fa-file-pdf text-red-500 text-xl"></i>
+                                    {% elif material.file_type in ['doc', 'docx'] %}
+                                        <i class="fas fa-file-word text-blue-500 text-xl"></i>
+                                    {% elif material.file_type in ['ppt', 'pptx'] %}
+                                        <i class="fas fa-file-powerpoint text-orange-500 text-xl"></i>
+                                    {% elif material.file_type in ['xls', 'xlsx'] %}
+                                        <i class="fas fa-file-excel text-green-500 text-xl"></i>
+                                    {% else %}
+                                        <i class="fas fa-file text-gray-500 text-xl"></i>
+                                    {% endif %}
+                                </div>
+                                <div class="flex-grow">
+                                    <h3 class="font-medium text-gray-800">{{ material.title }}</h3>
+                                    {% if material.description %}
+                                    <p class="text-sm text-gray-600">{{ material.description }}</p>
+                                    {% endif %}
+                                    <div class="mt-1 flex items-center text-sm">
+                                        <span class="text-gray-500">{{ material.file_type.upper() }}</span>
+                                        <span class="mx-2">•</span>
+                                        <span class="text-gray-500">{{ material.uploaded_at.strftime('%d %b %Y') }}</span>
+                                        
+                                        {% if material.is_viewed_by(current_user.id) %}
+                                        <span class="ml-2 px-2 py-0.5 bg-green-100 text-green-800 rounded-full text-xs">
+                                            <i class="fas fa-check mr-1"></i> Viewed
+                                        </span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <a href="{{ url_for('courses.view_material', material_id=material.id) }}" class="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm hover:bg-green-200 transition">
+                                    Download
+                                </a>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        {% else %}
+            <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 text-gray-600">
+                No materials have been uploaded for this lecture yet.
+                {% if current_user.is_admin %}
+                <a href="{{ url_for('courses.new_material', course_id=course.id) }}" class="text-blue-600 hover:underline">Upload materials</a>
+                {% endif %}
+            </div>
+        {% endif %}
+    </div>
+    
+    <!-- Sidebar -->
+    <div>
+        <!-- Next/Previous Lectures -->
+        <div class="bg-white rounded-lg shadow-md overflow-hidden mb-6">
+            <div class="bg-blue-600 text-white px-4 py-2 font-medium">
+                Other Lectures
+            </div>
+            <div class="p-4">
+                {% if lectures and lectures|length > 1 %}
+                    {% for lec in lectures %}
+                        {% if lec.id != lecture.id %}
+                            <div class="{% if not loop.last %}mb-4{% endif %}">
+                                <a href="{{ url_for('courses.view_lecture', lecture_id=lec.id) }}" class="block font-medium text-blue-600 hover:text-blue-800">
+                                    {{ lec.title }}
+                                    <div class="text-xs text-gray-600">
+                                        {{ lec.start_time.strftime('%d %b %Y, %I:%M %p') }}
+                                    </div>
+                                </a>
+                            </div>
+                        {% endif %}
+                    {% endfor %}
+                {% else %}
+                    <div class="text-gray-600 text-sm">
+                        No other lectures scheduled for this course.
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Course Information -->
+        <div class="bg-white rounded-lg shadow-md overflow-hidden">
+            <div class="bg-blue-600 text-white px-4 py-2 font-medium">
+                Course Information
+            </div>
+            <div class="p-4">
+                <h3 class="font-medium text-gray-800">{{ course.name }}</h3>
+                <p class="text-sm text-gray-600 mt-1">{{ course.code }}</p>
+                
+                <div class="mt-3 text-sm">
+                    <div class="flex items-center text-gray-600 mb-2">
+                        <i class="fas fa-book mr-2 w-5 text-center"></i>
+                        <span>Week {{ lecture.week_number }}</span>
+                    </div>
+                    
+                    <div class="flex items-center text-gray-600 mb-2">
+                        <i class="fas fa-calendar-alt mr-2 w-5 text-center"></i>
+                        <span>{{ lecture.day_of_week }}</span>
+                    </div>
+                    
+                    {% if lecture.location %}
+                    <div class="flex items-center text-gray-600 mb-2">
+                        <i class="fas fa-map-marker-alt mr-2 w-5 text-center"></i>
+                        <span>{{ lecture.location }}</span>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="flex items-center text-gray-600">
+                        <i class="fas fa-clock mr-2 w-5 text-center"></i>
+                        <span>
+                            {{ lecture.start_time.strftime('%I:%M %p') }} - 
+                            {{ lecture.end_time.strftime('%I:%M %p') }}
+                        </span>
+                    </div>
+                </div>
+                
+                <div class="mt-4">
+                    <a href="{{ url_for('courses.view_course', course_id=course.id) }}" class="text-blue-600 hover:text-blue-800 text-sm">
+                        <i class="fas fa-arrow-right mr-1"></i> View all course materials
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Camera functionality for attendance
+        const videoElement = document.getElementById('video');
+        const canvasElement = document.getElementById('canvas');
+        const captureBtn = document.getElementById('capture-btn');
+        const toggleCameraBtn = document.getElementById('toggle-camera');
+        const cameraOffDiv = document.getElementById('camera-off');
+        const cameraOnDiv = document.getElementById('camera-on');
+        const loadingIndicator = document.getElementById('loading-indicator');
+        const resultMessage = document.getElementById('result-message');
+        
+        let stream = null;
+        
+        // Only initialize camera functionality if the elements exist
+        if (toggleCameraBtn && videoElement) {
+            toggleCameraBtn.addEventListener('click', function() {
+                if (cameraOffDiv.classList.contains('hidden')) {
+                    // Camera is on, turn it off
+                    stopCamera();
+                    cameraOffDiv.classList.remove('hidden');
+                    cameraOnDiv.classList.add('hidden');
+                    toggleCameraBtn.textContent = 'Start Camera';
+                } else {
+                    // Camera is off, turn it on
+                    startCamera();
+                    cameraOffDiv.classList.add('hidden');
+                    cameraOnDiv.classList.remove('hidden');
+                    toggleCameraBtn.textContent = 'Stop Camera';
+                }
+            });
+            
+            // Start camera function
+            function startCamera() {
+                navigator.mediaDevices.getUserMedia({ video: true })
+                    .then(function(mediaStream) {
+                        stream = mediaStream;
+                        videoElement.srcObject = mediaStream;
+                        videoElement.play();
+                    })
+                    .catch(function(err) {
+                        console.error('Error accessing camera:', err);
+                        alert('Error accessing camera. Please make sure your camera is connected and you have granted permission.');
+                        cameraOffDiv.classList.remove('hidden');
+                        cameraOnDiv.classList.add('hidden');
+                        toggleCameraBtn.textContent = 'Start Camera';
+                    });
+            }
+            
+            // Stop camera function
+            function stopCamera() {
+                if (stream) {
+                    stream.getTracks().forEach(function(track) {
+                        track.stop();
+                    });
+                    videoElement.srcObject = null;
+                    stream = null;
+                }
+            }
+            
+            // Capture and submit
+            if (captureBtn) {
+                captureBtn.addEventListener('click', function() {
+                    // Show loading indicator
+                    loadingIndicator.classList.remove('hidden');
+                    
+                    // Capture image from video
+                    canvasElement.width = videoElement.videoWidth;
+                    canvasElement.height = videoElement.videoHeight;
+                    canvasElement.getContext('2d').drawImage(videoElement, 0, 0, canvasElement.width, canvasElement.height);
+                    
+                    // Convert to blob
+                    canvasElement.toBlob(function(blob) {
+                        // Create form data
+                        const formData = new FormData();
+                        formData.append('image', blob, 'attendance.jpg');
+                        
+                        // Submit to server
+                        fetch('{{ url_for("courses.mark_attendance", lecture_id=lecture.id) }}', {
+                            method: 'POST',
+                            body: formData
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            // Hide loading indicator
+                            loadingIndicator.classList.add('hidden');
+                            
+                            // Show result
+                            resultMessage.classList.remove('hidden');
+                            
+                            if (data.success) {
+                                resultMessage.innerHTML = `
+                                    <div class="bg-green-50 border-l-4 border-green-500 text-green-700 p-4 rounded">
+                                        <div class="flex">
+                                            <div class="flex-shrink-0">
+                                                <i class="fas fa-check-circle mt-1"></i>
+                                            </div>
+                                            <div class="ml-3">
+                                                <p class="font-medium">Success!</p>
+                                                <p class="text-sm">${data.message}</p>
+                                                <p class="text-sm mt-1">Refreshing page in 3 seconds...</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                `;
+                                
+                                // Refresh page after 3 seconds
+                                setTimeout(() => {
+                                    window.location.reload();
+                                }, 3000);
+                            } else {
+                                resultMessage.innerHTML = `
+                                    <div class="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 rounded">
+                                        <div class="flex">
+                                            <div class="flex-shrink-0">
+                                                <i class="fas fa-exclamation-circle mt-1"></i>
+                                            </div>
+                                            <div class="ml-3">
+                                                <p class="font-medium">Error</p>
+                                                <p class="text-sm">${data.message}</p>
+                                                <p class="text-sm mt-1">Please try again.</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                `;
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error:', error);
+                            loadingIndicator.classList.add('hidden');
+                            resultMessage.classList.remove('hidden');
+                            resultMessage.innerHTML = `
+                                <div class="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 rounded">
+                                    <div class="flex">
+                                        <div class="flex-shrink-0">
+                                            <i class="fas fa-exclamation-circle mt-1"></i>
+                                        </div>
+                                        <div class="ml-3">
+                                            <p class="font-medium">Error</p>
+                                            <p class="text-sm">An error occurred while processing your request.</p>
+                                            <p class="text-sm mt-1">Please try again.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                    }, 'image/jpeg', 0.9);
+                });
+            }
+        }
+        
+        // Clean up camera when leaving the page
+        window.addEventListener('beforeunload', function() {
+            if (stream) {
+                stream.getTracks().forEach(function(track) {
+                    track.stop();
+                });
+            }
+        });
+    });
+</script>
+{% endblock %}

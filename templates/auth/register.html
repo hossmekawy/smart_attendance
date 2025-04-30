@@ -1,0 +1,380 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto" x-data="registerForm()">
+    <h1 class="text-3xl font-bold mb-6">Register Your Face</h1>
+    
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="bg-white p-6 rounded-lg shadow-md">
+            <h2 class="text-xl font-bold mb-4">Face Capture</h2>
+            <div class="relative">
+                <!-- Video element for camera feed -->
+                <video x-ref="video" class="w-full rounded border" autoplay playsinline></video>
+                
+                <!-- Canvas for capturing the image (hidden) -->
+                <canvas x-ref="canvas" style="display: none;"></canvas>
+                
+                <!-- Captured image preview -->
+                <img x-ref="preview" x-show="faceDetected" class="w-full rounded border mt-2" style="display: none;"></img>
+                
+                <button 
+                    @click="captureFace" 
+                    class="absolute bottom-4 right-4 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-full shadow-md"
+                    :disabled="faceDetected || isProcessing"
+                >
+                    <span x-text="isProcessing ? 'Processing...' : (faceDetected ? 'Face Captured' : 'Capture Face')"></span>
+                </button>
+                
+                <button 
+                    x-show="faceDetected"
+                    @click="resetCamera" 
+                    class="absolute bottom-4 left-4 bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-full shadow-md"
+                >
+                    Reset
+                </button>
+            </div>
+            <div x-show="captureMessage" class="mt-4 p-3 rounded" :class="captureSuccess ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'">
+                <p x-text="captureMessage"></p>
+            </div>
+        </div>
+        
+        <div class="bg-white p-6 rounded-lg shadow-md">
+            <h2 class="text-xl font-bold mb-4">User Information</h2>
+            <form @submit.prevent="submitForm" method="post">
+                <div class="mb-4">
+                    <label for="name" class="block text-gray-700 mb-2">Full Name</label>
+                    <input type="text" id="name" name="name" x-model="formData.name" required
+                           class="w-full px-3 py-2 border rounded focus:outline-none focus:ring focus:border-blue-300">
+                </div>
+                
+                <div class="mb-4">
+                    <label for="email" class="block text-gray-700 mb-2">Email</label>
+                    <input type="email" id="email" name="email" x-model="formData.email" required
+                           @blur="checkEmail()"
+                           class="w-full px-3 py-2 border rounded focus:outline-none focus:ring"
+                           :class="emailError ? 'border-red-300 focus:border-red-500' : 'focus:border-blue-300'">
+                    <p x-show="emailError" class="text-red-500 text-sm mt-1" x-text="emailError"></p>
+                </div>
+                
+                <div class="mb-4">
+                    <label for="password" class="block text-gray-700 mb-2">Password</label>
+                    <input type="password" id="password" name="password" x-model="formData.password" required
+                           class="w-full px-3 py-2 border rounded focus:outline-none focus:ring focus:border-blue-300">
+                </div>
+                
+                <div class="mb-4">
+                    <label for="custom_data" class="block text-gray-700 mb-2">Additional Information</label>
+                    <textarea id="custom_data" name="custom_data" x-model="formData.custom_data" rows="3"
+                              class="w-full px-3 py-2 border rounded focus:outline-none focus:ring focus:border-blue-300"></textarea>
+                </div>
+                
+                <button type="submit" 
+                        class="w-full bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded"
+                        :disabled="!faceDetected || emailError || isSubmitting">
+                    <span x-show="!isSubmitting">Register</span>
+                    <span x-show="isSubmitting">
+                        <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Processing...
+                    </span>
+                </button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Success Modal -->
+    <div x-show="showSuccessModal" x-cloak class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
+            <h3 class="text-2xl font-bold text-green-600 mb-4">Registration Successful!</h3>
+            <p class="mb-6">Your face has been registered successfully. You can now use the attendance system.</p>
+            <div class="flex justify-end">
+                <button @click="redirectToHome" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">
+                    Go to Home
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Error Modal -->
+    <div x-show="showErrorModal" x-cloak class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
+            <h3 class="text-2xl font-bold text-red-600 mb-4">Registration Error</h3>
+            <p class="mb-6" x-text="errorMessage"></p>
+            <div class="flex justify-end">
+                <button @click="showErrorModal = false" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Existing User Modal -->
+    <div x-show="showExistingUserModal" x-cloak class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
+            <h3 class="text-2xl font-bold text-yellow-600 mb-4">Face Already Registered</h3>
+            <p class="mb-4">This face is already registered in our system with the email:</p>
+            <p class="font-bold text-center mb-6" x-text="existingUserEmail"></p>
+            <div class="flex justify-between">
+                <a href="/auth/login" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded">
+                    Go to Login
+                </a>
+                <button @click="showExistingUserModal = false; resetCamera()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">
+                    Try Again
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function registerForm() {
+        return {
+            formData: {
+                name: '',
+                email: '',
+                password: '',
+                custom_data: ''
+            },
+            faceDetected: false,
+            captureSuccess: false,
+            captureMessage: '',
+            emailError: '',
+            isProcessing: false,
+            isSubmitting: false,
+            showSuccessModal: false,
+            showErrorModal: false,
+            showExistingUserModal: false,
+            errorMessage: '',
+            existingUserEmail: '',
+            faceDetectionInterval: null,
+            
+            init() {
+                this.startCamera();
+                this.startFaceDetection();
+            },
+            
+            startCamera() {
+                const video = this.$refs.video;
+                
+                if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                    navigator.mediaDevices.getUserMedia({ video: true })
+                        .then(stream => {
+                            video.srcObject = stream;
+                        })
+                        .catch(err => {
+                            console.error("Error accessing the camera: ", err);
+                            this.captureMessage = "Error accessing the camera. Please make sure your camera is connected and you've granted permission.";
+                            this.captureSuccess = false;
+                        });
+                } else {
+                    this.captureMessage = "Your browser doesn't support camera access.";
+                    this.captureSuccess = false;
+                }
+            },
+            
+            startFaceDetection() {
+                // Check for faces every 1 second
+                this.faceDetectionInterval = setInterval(() => {
+                    if (this.faceDetected || this.isProcessing) return;
+                    
+                    const video = this.$refs.video;
+                    const canvas = this.$refs.canvas;
+                    
+                    // Make sure video is playing
+                    if (video.readyState !== video.HAVE_ENOUGH_DATA) {
+                        return;
+                    }
+                    
+                    // Set canvas dimensions to match video
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    
+                    // Draw the video frame to the canvas
+                    const context = canvas.getContext('2d');
+                    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                    
+                    // Convert canvas to blob and send to server
+                    canvas.toBlob(blob => {
+                        const formData = new FormData();
+                        formData.append('image', blob, 'face.jpg');
+                        
+                        fetch('/auth/detect_face', {
+                            method: 'POST',
+                            body: formData
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.face_detected) {
+                                // If user exists, show the existing user modal
+                                if (data.user_exists) {
+                                    this.existingUserEmail = data.user_email;
+                                    this.showExistingUserModal = true;
+                                    clearInterval(this.faceDetectionInterval);
+                                }
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error detecting face:', error);
+                        });
+                    }, 'image/jpeg', 0.8);
+                }, 1000);
+            },
+            
+            captureFace() {
+                this.isProcessing = true;
+                this.captureMessage = "Processing...";
+                
+                const video = this.$refs.video;
+                const canvas = this.$refs.canvas;
+                const preview = this.$refs.preview;
+                
+                // Make sure video is playing
+                if (video.readyState !== video.HAVE_ENOUGH_DATA) {
+                    this.captureMessage = "Camera not ready. Please wait...";
+                    this.captureSuccess = false;
+                    this.isProcessing = false;
+                    return;
+                }
+                
+                // Set canvas dimensions to match video
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                
+                // Draw the video frame to the canvas
+                const context = canvas.getContext('2d');
+                context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                
+                // Show preview
+                preview.src = canvas.toDataURL('image/jpeg');
+                
+                // Convert canvas to blob and send to server
+                canvas.toBlob(blob => {
+                    const formData = new FormData();
+                    formData.append('image', blob, 'face.jpg');
+                    
+                    fetch('/auth/register', {
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        this.isProcessing = false;
+                        
+                        if (data.success) {
+                            this.faceDetected = true;
+                            this.captureSuccess = true;
+                            this.captureMessage = "Face captured successfully!";
+                            clearInterval(this.faceDetectionInterval);
+                        } else {
+                            this.captureSuccess = false;
+                            this.captureMessage = data.message;
+                            
+                            // If the face is already registered
+                            if (data.user_exists) {
+                                this.existingUserEmail = data.email;
+                                this.showExistingUserModal = true;
+                            }
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        this.isProcessing = false;
+                        this.captureSuccess = false;
+                        this.captureMessage = "Error capturing face. Please try again.";
+                    });
+                }, 'image/jpeg', 0.8);
+            },
+            
+            resetCamera() {
+                this.faceDetected = false;
+                this.captureSuccess = false;
+                this.captureMessage = '';
+                this.showExistingUserModal = false;
+                
+                // Restart face detection
+                if (!this.faceDetectionInterval) {
+                    this.startFaceDetection();
+                }
+            },
+            
+            checkEmail() {
+                const email = this.formData.email.trim();
+                if (!email) {
+                    this.emailError = '';
+                    return;
+                }
+                
+                fetch(`/auth/check_email?email=${encodeURIComponent(email)}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.exists) {
+                            this.emailError = 'This email is already registered.';
+                        } else {
+                            this.emailError = '';
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error checking email:', error);
+                    });
+            },
+            
+            submitForm() {
+                if (!this.faceDetected) {
+                    this.errorMessage = "Please capture your face before registering.";
+                    this.showErrorModal = true;
+                    return;
+                }
+                
+                if (this.emailError) {
+                    this.errorMessage = "Please fix the errors in the form.";
+                    this.showErrorModal = true;
+                    return;
+                }
+                
+                this.isSubmitting = true;
+                
+                const formData = new FormData();
+                formData.append('name', this.formData.name);
+                formData.append('email', this.formData.email);
+                formData.append('password', this.formData.password);
+                formData.append('custom_data', this.formData.custom_data);
+                
+                fetch('/auth/register', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => {
+                    if (response.redirected) {
+                        window.location.href = response.url;
+                        return;
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    this.isSubmitting = false;
+                    
+                    if (data && data.success) {
+                        this.showSuccessModal = true;
+                    } else if (data && data.message) {
+                        this.errorMessage = data.message;
+                        this.showErrorModal = true;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    this.isSubmitting = false;
+                    this.errorMessage = "An error occurred during registration. Please try again.";
+                    this.showErrorModal = true;
+                });
+            },
+            
+            redirectToHome() {
+                window.location.href = '/';
+            }
+        }
+    }
+</script>
+{% endblock %}
+

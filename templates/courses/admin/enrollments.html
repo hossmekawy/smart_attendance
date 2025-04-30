@@ -1,0 +1,265 @@
+{% extends "courses/base_courses.html" %}
+
+
+{% block course_content %}
+<div class="mb-6">
+    <a href="{{ url_for('courses.view_course', course_id=course.id) }}" class="text-blue-600 hover:text-blue-800">
+        <i class="fas fa-arrow-left mr-1"></i> Back to {{ course.name }}
+    </a>
+</div>
+
+<div class="mb-6 flex justify-between items-center">
+    <div>
+        <h1 class="text-3xl font-bold text-gray-800">Course Enrollments</h1>
+        <p class="text-gray-600">{{ course.name }} ({{ course.code }})</p>
+    </div>
+    <button onclick="showEnrollModal()" class="px-4 py-2 bg-blue-600 text-white rounded-lg shadow hover:bg-blue-700 transition">
+        <i class="fas fa-user-plus mr-2"></i>Enroll Students
+    </button>
+</div>
+
+<div class="bg-white rounded-lg shadow-md overflow-hidden">
+    <div class="flex justify-between items-center px-6 py-3 bg-gray-50 border-b">
+        <h2 class="text-lg font-medium text-gray-800">Enrolled Students ({{ enrollments|length }})</h2>
+        <div class="flex items-center">
+            <input type="text" id="searchInput" placeholder="Search students..." 
+                   class="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+        </div>
+    </div>
+    
+    {% if enrollments %}
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Student
+                    </th>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        ID
+                    </th>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Enrolled On
+                    </th>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Attendance
+                    </th>
+                    <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Actions
+                    </th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200" id="enrollmentTable">
+                {% for enrollment in enrollments %}
+                <tr class="student-row">
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0 h-10 w-10">
+                                <img class="h-10 w-10 rounded-full" src="{{ enrollment.student.get_profile_pic_url() }}" alt="{{ enrollment.student.name }}">
+                            </div>
+                            <div class="ml-4">
+                                <div class="text-sm font-medium text-gray-900 student-name">{{ enrollment.student.name }}</div>
+                                <div class="text-sm text-gray-500 student-email">{{ enrollment.student.email }}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="text-sm text-gray-900 student-id">{{ enrollment.student.id or 'N/A' }}</div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {{ enrollment.enrolled_at.strftime('%d %b %Y') }}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="text-sm text-gray-900">
+                            {{ enrollment.get_attendance_percentage() }}% ({{ enrollment.get_attendance_count() }}/{{ lecture_count }})
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-2.5 mt-1">
+                            <div class="bg-blue-600 h-2.5 rounded-full" style="width: {{ enrollment.get_attendance_percentage() }}%"></div>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <form method="POST" action="{{ url_for('courses.delete_enrollment', enrollment_id=enrollment.id) }}" class="inline">
+                            <button type="submit" class="text-red-600 hover:text-red-900" onclick="return confirm('Are you sure you want to remove this student from the course?')">
+                                <i class="fas fa-user-minus"></i> Remove
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        
+
+
+    {% else %}
+        <div class="p-6 text-center text-gray-500">
+            No students are enrolled in this course yet.
+        </div>
+    {% endif %}
+</div>
+
+<!-- Enroll Students Modal -->
+<div id="enrollModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center hidden z-50">
+    <div class="bg-white rounded-lg shadow-xl p-6 max-w-2xl w-full">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-bold text-gray-900">Enroll Students</h3>
+            <button onclick="closeEnrollModal()" class="text-gray-400 hover:text-gray-500">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <form method="POST" action="{{ url_for('courses.add_enrollment', course_id=course.id) }}">
+            <div class="mb-4">
+                <label for="enrollment_type" class="block text-sm font-medium text-gray-700 mb-1">Enrollment Method</label>
+                <div class="flex space-x-4">
+                    <label class="inline-flex items-center">
+                        <input type="radio" name="enrollment_type" value="individual" checked
+                               class="form-radio h-4 w-4 text-blue-600 transition duration-150 ease-in-out"
+                               onclick="showIndividualEnrollment()">
+                        <span class="ml-2">Individual Students</span>
+                    </label>
+                    <label class="inline-flex items-center">
+                        <input type="radio" name="enrollment_type" value="bulk"
+                               class="form-radio h-4 w-4 text-blue-600 transition duration-150 ease-in-out"
+                               onclick="showBulkEnrollment()">
+                        <span class="ml-2">Bulk Enrollment</span>
+                    </label>
+                </div>
+            </div>
+            
+            <div id="individualEnrollment">
+                <div class="mb-4">
+                    <label for="student_search" class="block text-sm font-medium text-gray-700 mb-1">Search Students</label>
+                    <input type="text" id="student_search" placeholder="Search by name, email, or ID"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                
+                <div class="mb-4 max-h-60 overflow-y-auto border border-gray-200 rounded-md">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50 sticky top-0">
+                            <tr>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    <input type="checkbox" id="selectAll" class="form-checkbox h-4 w-4 text-blue-600">
+                                </th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Student
+                                </th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    ID
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            {% for user in available_users %}
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <input type="checkbox" name="user_ids" value="{{ user.id }}" class="form-checkbox h-4 w-4 text-blue-600 student-checkbox">
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="flex items-center">
+                                        <div class="flex-shrink-0 h-8 w-8">
+                                            <img class="h-8 w-8 rounded-full" src="{{ user.get_profile_pic_url() }}" alt="{{ user.name }}">
+                                        </div>
+                                        <div class="ml-4">
+                                            <div class="text-sm font-medium text-gray-900">{{ user.name }}</div>
+                                            <div class="text-sm text-gray-500">{{ user.email }}</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    {{ user.id or 'N/A' }}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div id="bulkEnrollment" class="hidden">
+                <div class="mb-4">
+                    <label for="email_list" class="block text-sm font-medium text-gray-700 mb-1">Student Emails (one per line)</label>
+                    <textarea id="email_list" name="email_list" rows="6"
+                              class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                              placeholder="student1@example.com&#10;student2@example.com&#10;student3@example.com"></textarea>
+                </div>
+            </div>
+            
+            <div class="flex justify-end space-x-3 mt-6">
+                <button type="button" onclick="closeEnrollModal()" class="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 transition">
+                    Cancel
+                </button>
+                <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition">
+                    <i class="fas fa-user-plus mr-2"></i>Enroll Selected Students
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+
+<script>
+
+    // Search functionality for enrolled students
+    document.getElementById('searchInput').addEventListener('keyup', function() {
+        const searchValue = this.value.toLowerCase();
+        const rows = document.querySelectorAll('#enrollmentTable .student-row');
+        
+        rows.forEach(row => {
+            const name = row.querySelector('.student-name').textContent.toLowerCase();
+            const email = row.querySelector('.student-email').textContent.toLowerCase();
+            const id = row.querySelector('.student-id').textContent.toLowerCase();
+            
+            if (name.includes(searchValue) || email.includes(searchValue) || id.includes(searchValue)) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    });
+    
+    // Search functionality for available students
+    document.getElementById('student_search').addEventListener('keyup', function() {
+        const searchValue = this.value.toLowerCase();
+        const rows = document.querySelectorAll('#individualEnrollment tbody tr');
+        
+        rows.forEach(row => {
+            const studentInfo = row.querySelector('td:nth-child(2)').textContent.toLowerCase();
+            const studentId = row.querySelector('td:nth-child(3)').textContent.toLowerCase();
+            
+            if (studentInfo.includes(searchValue) || studentId.includes(searchValue)) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    });
+    
+    // Select all checkbox functionality
+    document.getElementById('selectAll').addEventListener('change', function() {
+        const checkboxes = document.querySelectorAll('.student-checkbox');
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = this.checked;
+        });
+    });
+    
+    function showEnrollModal() {
+        document.getElementById('enrollModal').classList.remove('hidden');
+    }
+    
+    function closeEnrollModal() {
+        document.getElementById('enrollModal').classList.add('hidden');
+    }
+    
+    function showIndividualEnrollment() {
+        document.getElementById('individualEnrollment').classList.remove('hidden');
+        document.getElementById('bulkEnrollment').classList.add('hidden');
+    }
+    
+    function showBulkEnrollment() {
+        document.getElementById('individualEnrollment').classList.add('hidden');
+        document.getElementById('bulkEnrollment').classList.remove('hidden');
+    }
+</script>
+{% endblock %}

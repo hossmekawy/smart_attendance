@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attendance Report - {{ course.name }} - {{ lecture.title }}</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #4338ca;
+            padding-bottom: 10px;
+        }
+        .logo {
+            max-width: 150px;
+            margin-bottom: 10px;
+        }
+        h1 {
+            font-size: 24px;
+            margin: 0 0 5px 0;
+            color: #4338ca;
+        }
+        h2 {
+            font-size: 18px;
+            margin: 0 0 5px 0;
+            color: #666;
+        }
+        .info-box {
+            background-color: #f3f4f6;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        .info-row {
+            display: flex;
+            margin-bottom: 5px;
+        }
+        .info-label {
+            font-weight: bold;
+            width: 150px;
+        }
+        .attendance-summary {
+            margin: 20px 0;
+            padding: 10px;
+            background-color: #e0e7ff;
+            border-radius: 5px;
+            text-align: center;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f3f4f6;
+            font-weight: bold;
+        }
+        tr:nth-child(even) {
+            background-color: #f9fafb;
+        }
+        .present {
+            color: #047857;
+            font-weight: bold;
+        }
+        .absent {
+            color: #dc2626;
+            font-weight: bold;
+        }
+        .footer {
+            margin-top: 30px;
+            text-align: center;
+            font-size: 12px;
+            color: #666;
+            border-top: 1px solid #ddd;
+            padding-top: 10px;
+        }
+        .signature-area {
+            margin-top: 50px;
+            display: flex;
+            justify-content: space-between;
+        }
+        .signature-box {
+            border-top: 1px solid #000;
+            width: 200px;
+            padding-top: 5px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Attendance Report</h1>
+        <h2>Face Recognition Attendance System</h2>
+    </div>
+    
+    <div class="info-box">
+        <div class="info-row">
+            <div class="info-label">Course:</div>
+            <div>{{ course.name }} ({{ course.code }})</div>
+        </div>
+        <div class="info-row">
+            <div class="info-label">Lecture:</div>
+            <div>{{ lecture.title }}</div>
+        </div>
+        <div class="info-row">
+            <div class="info-label">Date:</div>
+            <div>{{ lecture.start_time.strftime('%A, %d %B %Y') }}</div>
+        </div>
+        <div class="info-row">
+            <div class="info-label">Time:</div>
+            <div>{{ lecture.start_time.strftime('%H:%M') }} - {{ lecture.end_time.strftime('%H:%M') }}</div>
+        </div>
+        <div class="info-row">
+            <div class="info-label">Location:</div>
+            <div>{{ lecture.location }}</div>
+        </div>
+        <div class="info-row">
+            <div class="info-label">Report Generated:</div>
+            <div>{{ current_time.strftime('%d %B %Y, %H:%M:%S') }}</div>
+        </div>
+    </div>
+    
+    <div class="attendance-summary">
+        <h3>Attendance Summary</h3>
+        <p>Present: {{ attendance_count }} / {{ enrolled_count }} students ({{ attendance_percentage|round|int }}%)</p>
+    </div>
+    
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 5%;">#</th>
+                <th style="width: 40%;">Student Name</th>
+                <th style="width: 20%;">Student ID</th>
+                <th style="width: 15%;">Status</th>
+                <th style="width: 20%;">Time</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in student_attendance %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td>{{ item.student.name }}</td>
+                <td>{{ item.student.custom_data or 'N/A' }}</td>
+                <td class="{% if item.present %}present{% else %}absent{% endif %}">
+                    {% if item.present %}Present{% else %}Absent{% endif %}
+                </td>
+                <td>{{ item.timestamp.strftime('%H:%M:%S') if item.timestamp else 'N/A' }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    
+    <div class="signature-area">
+        <div class="signature-box">
+            Instructor Signature
+        </div>
+        <div class="signature-box">
+            Department Head Signature
+        </div>
+    </div>
+    
+    <div class="footer">
+        <p>This is an automatically generated report from the Face Recognition Attendance System.</p>
+    </div>
+</body>
+</html>

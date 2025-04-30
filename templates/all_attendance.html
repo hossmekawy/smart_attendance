@@ -1,0 +1,305 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-3xl font-bold text-gray-800">All Attendance Records</h1>
+        <a href="{{ url_for('admin') }}" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">
+            <i class="fas fa-arrow-left mr-2"></i>Back to Admin
+        </a>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-md overflow-hidden">
+        <div class="px-6 py-4 bg-gray-50 border-b">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold text-gray-800">Attendance Records</h2>
+                <div class="flex space-x-2">
+                    <button id="exportBtn" class="px-4 py-2 bg-green-600 text-white rounded-lg shadow hover:bg-green-700 transition">
+                        <i class="fas fa-file-export mr-2"></i>Export to Excel
+                    </button>
+                    <button id="printBtn" class="px-4 py-2 bg-purple-600 text-white rounded-lg shadow hover:bg-purple-700 transition">
+                        <i class="fas fa-print mr-2"></i>Print
+                    </button>
+                </div>
+            </div>
+
+            <!-- Search and Filter -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    <label for="searchInput" class="block text-sm font-medium text-gray-700 mb-1">Search</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="fas fa-search text-gray-400"></i>
+                        </div>
+                        <input type="text" id="searchInput" placeholder="Search by name or email..."
+                               class="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                    </div>
+                </div>
+
+                <div>
+                    <label for="dateFilter" class="block text-sm font-medium text-gray-700 mb-1">Date Range</label>
+                    <select id="dateFilter" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        <option value="all">All Time</option>
+                        <option value="today">Today</option>
+                        <option value="yesterday">Yesterday</option>
+                        <option value="week">This Week</option>
+                        <option value="month">This Month</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label for="courseFilter" class="block text-sm font-medium text-gray-700 mb-1">Course</label>
+                    <select id="courseFilter" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        <option value="all">All Courses</option>
+                        <option value="general">General Attendance</option>
+                        {% for course in courses %}
+                        <option value="{{ course.id }}">{{ course.code }} - {{ course.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200" id="attendanceTable">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            User
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Timestamp
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Lecture
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Course
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Status
+                        </th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for attendance in attendances %}
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="flex items-center">
+                                {% set user = users|selectattr('id', 'eq', attendance.user_id)|first %}
+                                {% if user %}
+                                <div class="flex-shrink-0 h-10 w-10">
+                                    <img class="h-10 w-10 rounded-full" src="{{ user.get_profile_pic_url() }}" alt="{{ user.name }}">
+                                </div>
+                                <div class="ml-4">
+                                    <div class="text-sm font-medium text-gray-900">{{ user.name }}</div>
+                                    <div class="text-sm text-gray-500">{{ user.email }}</div>
+                                </div>
+                                {% else %}
+                                <div class="text-sm text-gray-500">Unknown User (ID: {{ attendance.user_id }})</div>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {{ attendance.timestamp.strftime('%d %b %Y, %H:%M:%S') }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {% if attendance.lecture_id %}
+                                {% set lecture = lectures|selectattr('id', 'eq', attendance.lecture_id)|first %}
+                                {% if lecture %}
+                                    <a href="{{ url_for('courses.view_lecture', lecture_id=lecture.id) }}" class="text-blue-600 hover:text-blue-800">
+                                        {{ lecture.title }}
+                                    </a>
+                                {% else %}
+                                    Unknown Lecture
+                                {% endif %}
+                            {% else %}
+                                General Attendance
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {% if attendance.lecture_id %}
+                                {% set lecture = lectures|selectattr('id', 'eq', attendance.lecture_id)|first %}
+                                {% if lecture %}
+                                    {% set course = courses|selectattr('id', 'eq', lecture.course_id)|first %}
+                                    {% if course %}
+                                        <a href="{{ url_for('courses.view_course', course_id=course.id) }}" class="text-blue-600 hover:text-blue-800">
+                                            {{ course.code }} - {{ course.name }}
+                                        </a>
+                                    {% else %}
+                                        Unknown Course
+                                    {% endif %}
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            {% else %}
+                                N/A
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                Present
+                            </span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Show welcome toast
+        setTimeout(() => {
+            Alpine.evaluate(document.body, '$data.add("Viewing all attendance records", "info", 3000)');
+        }, 500);
+
+        // Get all table rows (excluding header)
+        const tableRows = Array.from(document.querySelectorAll('#attendanceTable tbody tr'));
+
+        // Search functionality
+        const searchInput = document.getElementById('searchInput');
+        searchInput.addEventListener('input', filterTable);
+
+        // Date filter
+        const dateFilter = document.getElementById('dateFilter');
+        dateFilter.addEventListener('change', filterTable);
+
+        // Course filter
+        const courseFilter = document.getElementById('courseFilter');
+        courseFilter.addEventListener('change', filterTable);
+
+        // Function to filter the table based on all criteria
+        function filterTable() {
+            const searchTerm = searchInput.value.toLowerCase();
+            const dateOption = dateFilter.value;
+            const courseOption = courseFilter.value;
+
+            let visibleCount = 0;
+
+            tableRows.forEach(row => {
+                // Get user name and email for search
+                const userCell = row.querySelector('td:first-child');
+                const userName = userCell.querySelector('.text-gray-900')?.textContent.toLowerCase() || '';
+                const userEmail = userCell.querySelector('.text-gray-500')?.textContent.toLowerCase() || '';
+
+                // Get date for date filter
+                const dateCell = row.querySelector('td:nth-child(2)').textContent;
+                const date = new Date(dateCell);
+
+                // Get course for course filter
+                const courseCell = row.querySelector('td:nth-child(4)');
+                const courseId = courseCell.querySelector('a')?.href.split('/').pop() || 'general';
+
+                // Check if row matches search term
+                const matchesSearch = userName.includes(searchTerm) || userEmail.includes(searchTerm);
+
+                // Check if row matches date filter
+                let matchesDate = true;
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+
+                const yesterday = new Date(today);
+                yesterday.setDate(yesterday.getDate() - 1);
+
+                const weekStart = new Date(today);
+                weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+
+                const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+
+                if (dateOption === 'today') {
+                    const rowDate = new Date(date);
+                    rowDate.setHours(0, 0, 0, 0);
+                    matchesDate = rowDate.getTime() === today.getTime();
+                } else if (dateOption === 'yesterday') {
+                    const rowDate = new Date(date);
+                    rowDate.setHours(0, 0, 0, 0);
+                    matchesDate = rowDate.getTime() === yesterday.getTime();
+                } else if (dateOption === 'week') {
+                    matchesDate = date >= weekStart;
+                } else if (dateOption === 'month') {
+                    matchesDate = date >= monthStart;
+                }
+
+                // Check if row matches course filter
+                let matchesCourse = true;
+                if (courseOption !== 'all') {
+                    if (courseOption === 'general') {
+                        matchesCourse = courseCell.textContent.includes('N/A');
+                    } else {
+                        matchesCourse = courseId === courseOption;
+                    }
+                }
+
+                // Show/hide row based on all filters
+                const visible = matchesSearch && matchesDate && matchesCourse;
+                row.style.display = visible ? '' : 'none';
+
+                if (visible) visibleCount++;
+            });
+
+            // Show toast with filter results
+            Alpine.evaluate(document.body, `$data.add("Showing ${visibleCount} of ${tableRows.length} records", "info", 2000)`);
+        }
+
+        // Handle print button
+        document.getElementById('printBtn').addEventListener('click', function() {
+            Alpine.evaluate(document.body, '$data.add("Preparing to print...", "info", 2000)');
+            setTimeout(() => {
+                window.print();
+            }, 1000);
+        });
+
+        // Handle export button
+        document.getElementById('exportBtn').addEventListener('click', function() {
+            Alpine.evaluate(document.body, '$data.add("Exporting to Excel...", "info", 2000)');
+
+            // Get visible rows only
+            const visibleRows = tableRows.filter(row => row.style.display !== 'none');
+
+            // Simple export to CSV
+            const table = document.getElementById('attendanceTable');
+            let csv = [];
+
+            // Add header row
+            const headerRow = [];
+            const headers = table.querySelectorAll('thead th');
+            headers.forEach(header => {
+                headerRow.push(`"${header.textContent.trim()}"`);
+            });
+            csv.push(headerRow.join(','));
+
+            // Add visible data rows
+            visibleRows.forEach(row => {
+                const cols = row.querySelectorAll('td');
+                const rowData = [];
+
+                cols.forEach(col => {
+                    // Get text content, removing any images or extra HTML
+                    let text = col.textContent.trim().replace(/\s+/g, ' ');
+                    rowData.push(`"${text}"`);
+                });
+
+                csv.push(rowData.join(','));
+            });
+
+            const csvContent = csv.join('\n');
+            const blob = new Blob([csvContent], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+
+            const a = document.createElement('a');
+            a.setAttribute('href', url);
+            a.setAttribute('download', 'attendance_records.csv');
+            a.click();
+
+            setTimeout(() => {
+                Alpine.evaluate(document.body, `$data.add("Exported ${visibleRows.length} records successfully!", "success", 3000)`);
+            }, 1000);
+        });
+    });
+</script>
+{% endblock %}

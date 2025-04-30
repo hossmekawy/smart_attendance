@@ -1,0 +1,245 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="bg-white rounded-lg shadow-md overflow-hidden">
+    <div class="p-6">
+        <h1 class="text-2xl font-bold text-gray-800 mb-6">Course Calendar</h1>
+
+        <div class="wrapper bg-white rounded shadow w-full" x-data="calendar()">
+            <div class="header flex justify-between border-b p-4">
+                <span class="text-lg font-bold" x-text="currentMonthYear"></span>
+                <div class="buttons flex space-x-2">
+                    <button @click="prevMonth" class="p-2 rounded hover:bg-gray-100">
+                        <svg width="1em" fill="gray" height="1em" viewBox="0 0 16 16" class="bi bi-arrow-left-circle" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                            <path fill-rule="evenodd" d="M8 15A7 7 0 1 0 8 1a7 7 0 0 0 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+                            <path fill-rule="evenodd" d="M8.354 11.354a.5.5 0 0 0 0-.708L5.707 8l2.647-2.646a.5.5 0 1 0-.708-.708l-3 3a.5.5 0 0 0 0 .708l3 3a.5.5 0 0 0 .708 0z"/>
+                            <path fill-rule="evenodd" d="M11.5 8a.5.5 0 0 0-.5-.5H6a.5.5 0 0 0 0 1h5a.5.5 0 0 0 .5-.5z"/>
+                        </svg>
+                    </button>
+                    <button @click="nextMonth" class="p-2 rounded hover:bg-gray-100">
+                        <svg width="1em" fill="gray" height="1em" viewBox="0 0 16 16" class="bi bi-arrow-right-circle" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                            <path fill-rule="evenodd" d="M8 15A7 7 0 1 0 8 1a7 7 0 0 0 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+                            <path fill-rule="evenodd" d="M7.646 11.354a.5.5 0 0 1 0-.708L10.293 8 7.646 5.354a.5.5 0 1 1 .708-.708l3 3a.5.5 0 0 1 0 .708l-3 3a.5.5 0 0 1-.708 0z"/>
+                            <path fill-rule="evenodd" d="M4.5 8a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1H5a.5.5 0 0 1-.5-.5z"/>
+                        </svg>
+                    </button>
+                    <button @click="goToToday" class="px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600">
+                        Today
+                    </button>
+                </div>
+            </div>
+            <table class="w-full">
+                <thead>
+                    <tr>
+                        <template x-for="day in weekDays" :key="day">
+                            <th class="p-2 border-r h-10 xl:w-40 lg:w-30 md:w-30 sm:w-20 w-10 xl:text-sm text-xs">
+                                <span class="xl:block lg:block md:block sm:block hidden" x-text="day"></span>
+                                <span class="xl:hidden lg:hidden md:hidden sm:hidden block" x-text="day.substring(0,3)"></span>
+                            </th>
+                        </template>
+                    </tr>
+                </thead>
+                <tbody>
+                    <template x-for="week in calendarDays" :key="week[0].date">
+                        <tr class="text-center h-20">
+                            <template x-for="day in week" :key="day.date">
+                                <td :class="{
+                                    'border p-1 h-40 xl:w-40 lg:w-30 md:w-30 sm:w-20 w-10 overflow-auto transition cursor-pointer duration-500 ease hover:bg-gray-300': true,
+                                    'bg-gray-100': day.isOtherMonth,
+                                    'bg-blue-50': day.isToday
+                                }">
+                                    <div class="flex flex-col h-40 mx-auto xl:w-40 lg:w-30 md:w-30 sm:w-full w-10 overflow-hidden">
+                                        <div class="top h-5 w-full">
+                                            <span :class="{
+                                                'text-gray-500': day.isOtherMonth,
+                                                'text-blue-600 font-bold': day.isToday,
+                                                'text-gray-800': !day.isOtherMonth && !day.isToday
+                                            }" x-text="day.dayNumber"></span>
+                                        </div>
+                                        <div class="bottom flex-grow h-30 py-1 w-full overflow-y-auto">
+                                            <template x-for="event in day.events" :key="event.id">
+                                                <div :class="{
+                                                    'text-white rounded p-1 text-xs mb-1 overflow-hidden': true,
+                                                    'bg-blue-500': event.type === 'lecture',
+                                                    'bg-green-500': event.type === 'assignment',
+                                                    'bg-purple-500': event.type === 'exam'
+                                                }">
+                                                    <a :href="event.url" class="block" @click.prevent="
+                                                        $parent.$parent.$parent.$parent.$parent.$parent.showToast(`Opening: ${event.title}`, event.type === 'lecture' ? 'info' : event.type === 'exam' ? 'warning' : 'success');
+                                                        setTimeout(() => { window.location.href = event.url }, 500);
+                                                    ">
+                                                        <span class="font-bold block truncate" x-text="event.title"></span>
+                                                        <span class="block truncate text-xs opacity-80" x-text="event.time"></span>
+                                                    </a>
+                                                </div>
+                                            </template>
+                                        </div>
+                                    </div>
+                                </td>
+                            </template>
+                        </tr>
+                    </template>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function calendar() {
+        return {
+            weekDays: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
+            currentMonth: new Date().getMonth(),
+            currentYear: new Date().getFullYear(),
+
+            init() {
+                // Show welcome toast when calendar loads
+                setTimeout(() => {
+                    this.showToast('Calendar loaded successfully', 'success');
+                }, 500);
+            },
+            events: JSON.parse('{{ events|tojson }}'),
+            showToast(message, type = 'info') {
+                // Use Alpine.js toast system
+                Alpine.evaluate(document.body, `$data.add("${message}", "${type}", 3000)`);
+            },
+
+            get currentMonthYear() {
+                const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+                return `${months[this.currentMonth]} ${this.currentYear}`;
+            },
+
+            get calendarDays() {
+                const firstDay = new Date(this.currentYear, this.currentMonth, 1);
+                const lastDay = new Date(this.currentYear, this.currentMonth + 1, 0);
+                const daysInMonth = lastDay.getDate();
+                const startingDayOfWeek = firstDay.getDay();
+
+                // Get the previous month's last days to fill in the first week
+                const prevMonthLastDay = new Date(this.currentYear, this.currentMonth, 0).getDate();
+
+                // Create calendar grid (6 weeks x 7 days)
+                let calendar = [];
+                let day = 1;
+                let nextMonthDay = 1;
+
+                const today = new Date();
+                const todayDate = today.getDate();
+                const todayMonth = today.getMonth();
+                const todayYear = today.getFullYear();
+
+                for (let week = 0; week < 6; week++) {
+                    let weekDays = [];
+
+                    for (let weekday = 0; weekday < 7; weekday++) {
+                        if (week === 0 && weekday < startingDayOfWeek) {
+                            // Previous month days
+                            const prevMonthDay = prevMonthLastDay - startingDayOfWeek + weekday + 1;
+                            const prevMonth = this.currentMonth === 0 ? 11 : this.currentMonth - 1;
+                            const prevYear = this.currentMonth === 0 ? this.currentYear - 1 : this.currentYear;
+                            const dateStr = `${prevYear}-${String(prevMonth + 1).padStart(2, '0')}-${String(prevMonthDay).padStart(2, '0')}`;
+
+                            weekDays.push({
+                                date: dateStr,
+                                dayNumber: prevMonthDay,
+                                isOtherMonth: true,
+                                isToday: false,
+                                events: this.getEventsForDate(dateStr)
+                            });
+                        } else if (day > daysInMonth) {
+                            // Next month days
+                            const nextMonth = this.currentMonth === 11 ? 0 : this.currentMonth + 1;
+                            const nextYear = this.currentMonth === 11 ? this.currentYear + 1 : this.currentYear;
+                            const dateStr = `${nextYear}-${String(nextMonth + 1).padStart(2, '0')}-${String(nextMonthDay).padStart(2, '0')}`;
+
+                            weekDays.push({
+                                date: dateStr,
+                                dayNumber: nextMonthDay,
+                                isOtherMonth: true,
+                                isToday: false,
+                                events: this.getEventsForDate(dateStr)
+                            });
+                            nextMonthDay++;
+                        } else {
+                            // Current month days
+                            const dateStr = `${this.currentYear}-${String(this.currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                            const isToday = day === todayDate && this.currentMonth === todayMonth && this.currentYear === todayYear;
+
+                            weekDays.push({
+                                date: dateStr,
+                                dayNumber: day,
+                                isOtherMonth: false,
+                                isToday: isToday,
+                                events: this.getEventsForDate(dateStr)
+                            });
+                            day++;
+                        }
+                    }
+
+                    calendar.push(weekDays);
+
+                    // If we've already processed all days in the month and the next month, break
+                    if (day > daysInMonth && week >= 3) {
+                        break;
+                    }
+                }
+
+                return calendar;
+            },
+
+            getEventsForDate(dateStr) {
+                // Filter events for this date
+                return this.events.filter(event => {
+                    const eventDate = event.start.split('T')[0];
+                    return eventDate === dateStr;
+                }).map(event => {
+                    // Format the time
+                    const startTime = new Date(event.start).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                    const endTime = new Date(event.end).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+
+                    return {
+                        id: event.id,
+                        title: event.title,
+                        time: `${startTime} - ${endTime}`,
+                        url: event.url,
+                        type: event.title.toLowerCase().includes('exam') ? 'exam' :
+                              event.title.toLowerCase().includes('assignment') ? 'assignment' : 'lecture'
+                    };
+                });
+            },
+
+            prevMonth() {
+                if (this.currentMonth === 0) {
+                    this.currentMonth = 11;
+                    this.currentYear--;
+                } else {
+                    this.currentMonth--;
+                }
+                // Show toast notification
+                this.showToast(`Viewing ${this.currentMonthYear}`, 'info');
+            },
+
+            nextMonth() {
+                if (this.currentMonth === 11) {
+                    this.currentMonth = 0;
+                    this.currentYear++;
+                } else {
+                    this.currentMonth++;
+                }
+                // Show toast notification
+                this.showToast(`Viewing ${this.currentMonthYear}`, 'info');
+            },
+
+            goToToday() {
+                const today = new Date();
+                this.currentMonth = today.getMonth();
+                this.currentYear = today.getFullYear();
+                // Show toast notification
+                this.showToast('Returned to current month', 'success');
+            }
+        };
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,60 @@
+{% macro render_pagination(pagination, endpoint, args={}) %}
+<div class="px-6 py-4 bg-gray-50 border-t flex flex-col sm:flex-row items-center justify-between">
+    <div class="text-sm text-gray-700 mb-4 sm:mb-0">
+        Showing <span class="font-medium">{{ (pagination.page - 1) * pagination.per_page + 1 }}</span>
+        to <span class="font-medium">
+            {% if pagination.page * pagination.per_page > pagination.total %}
+                {{ pagination.total }}
+            {% else %}
+                {{ pagination.page * pagination.per_page }}
+            {% endif %}
+        </span>
+        of <span class="font-medium">{{ pagination.total }}</span> items
+    </div>
+    
+    <div x-data="pagination({{ pagination.page }}, {{ pagination.pages }}, '{{ endpoint }}', {{ args|tojson|safe }})" class="flex space-x-1">
+        <!-- Previous button -->
+        <template x-if="hasPrev()">
+            <a :href="prevPageUrl()" class="px-3 py-1 border border-gray-300 rounded-md text-sm bg-white hover:bg-gray-100 transition">
+                Previous
+            </a>
+        </template>
+        <template x-if="!hasPrev()">
+            <span class="px-3 py-1 border border-gray-300 rounded-md text-sm bg-gray-100 text-gray-400 cursor-not-allowed">
+                Previous
+            </span>
+        </template>
+        
+        <!-- Page numbers -->
+        <template x-for="item in paginationItems()" :key="item.type + (item.value || '')">
+            <template x-if="item.type === 'page'">
+                <template x-if="item.value === currentPage">
+                    <span class="px-3 py-1 border border-blue-500 rounded-md text-sm bg-blue-500 text-white">
+                        <span x-text="item.value"></span>
+                    </span>
+                </template>
+                <template x-if="item.value !== currentPage">
+                    <a :href="getPageUrl(item.value)" class="px-3 py-1 border border-gray-300 rounded-md text-sm bg-white hover:bg-gray-100 transition">
+                        <span x-text="item.value"></span>
+                    </a>
+                </template>
+            </template>
+            <template x-if="item.type === 'ellipsis'">
+                <span class="px-2 py-1 text-gray-500">…</span>
+            </template>
+        </template>
+        
+        <!-- Next button -->
+        <template x-if="hasNext()">
+            <a :href="nextPageUrl()" class="px-3 py-1 border border-gray-300 rounded-md text-sm bg-white hover:bg-gray-100 transition">
+                Next
+            </a>
+        </template>
+        <template x-if="!hasNext()">
+            <span class="px-3 py-1 border border-gray-300 rounded-md text-sm bg-gray-100 text-gray-400 cursor-not-allowed">
+                Next
+            </span>
+        </template>
+    </div>
+</div>
+{% endmacro %}

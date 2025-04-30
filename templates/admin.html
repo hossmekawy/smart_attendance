@@ -1,0 +1,406 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mx-auto px-4">
+    <h1 class="text-3xl font-bold text-gray-800 mb-6">Admin Dashboard</h1>
+
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-blue-500">
+            <div class="flex items-center">
+                <div class="p-3 rounded-full bg-blue-100 text-blue-500 mr-4">
+                    <i class="fas fa-users text-xl"></i>
+                </div>
+                <div>
+                    <p class="text-gray-500 text-sm">Total Users</p>
+                    <p class="text-2xl font-bold text-gray-800">{{ users|length }}</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-green-500">
+            <div class="flex items-center">
+                <div class="p-3 rounded-full bg-green-100 text-green-500 mr-4">
+                    <i class="fas fa-book text-xl"></i>
+                </div>
+                <div>
+                    <p class="text-gray-500 text-sm">Total Courses</p>
+                    <p class="text-2xl font-bold text-gray-800">{{ course_stats|length }}</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-purple-500">
+            <div class="flex items-center">
+                <div class="p-3 rounded-full bg-purple-100 text-purple-500 mr-4">
+                    <i class="fas fa-chalkboard text-xl"></i>
+                </div>
+                <div>
+                    <p class="text-gray-500 text-sm">Total Lectures</p>
+                    <p class="text-2xl font-bold text-gray-800">
+                        {% set lecture_count = 0 %}
+                        {% for stat in course_stats %}
+                            {% set lecture_count = lecture_count + stat.lectures %}
+                        {% endfor %}
+                        {{ lecture_count }}
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-yellow-500">
+            <div class="flex items-center">
+                <div class="p-3 rounded-full bg-yellow-100 text-yellow-500 mr-4">
+                    <i class="fas fa-clipboard-check text-xl"></i>
+                </div>
+                <div>
+                    <p class="text-gray-500 text-sm">Attendance Records</p>
+                    <p class="text-2xl font-bold text-gray-800">{{ attendances|length }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- User Management Section -->
+    <div class="bg-white rounded-lg shadow-md overflow-hidden mb-8">
+        <div class="px-6 py-4 bg-gray-50 border-b flex justify-between items-center">
+            <h2 class="text-xl font-bold text-gray-800">User Management</h2>
+            <a href="{{ url_for('auth.register') }}" class="px-4 py-2 bg-blue-600 text-white rounded-lg shadow hover:bg-blue-700 transition">
+                <i class="fas fa-user-plus mr-2"></i>Add New User
+            </a>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            User
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Role
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            ID
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Registered
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Actions
+                        </th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for user in users %}
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="flex items-center">
+                                <div class="flex-shrink-0 h-10 w-10">
+                                    <img class="h-10 w-10 rounded-full" src="{{ user.get_profile_pic_url() }}" alt="{{ user.name }}">
+                                </div>
+                                <div class="ml-4">
+                                    <div class="text-sm font-medium text-gray-900">{{ user.name }}</div>
+                                    <div class="text-sm text-gray-500">{{ user.email }}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full
+                                  {% if user.is_admin %}bg-purple-100 text-purple-800{% else %}bg-green-100 text-green-800{% endif %}">
+                                {{ 'Admin' if user.is_admin else 'Student' }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {{ user.custom_data or 'N/A' }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {{ user.created_at.strftime('%d %b %Y') }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <div class="flex justify-end space-x-2">
+                                <button @click="generateUserCard({{ user.id }}, '{{ user.name }}')" class="text-blue-600 hover:text-blue-900">
+                                    <i class="fas fa-id-card"></i>
+                                </button>
+                                <a href="{{ url_for('edit_user', user_id=user.id) }}" class="text-indigo-600 hover:text-indigo-900">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <button
+                                    @click="$dispatch('show-confirm-dialog', {
+                                        message: 'Are you sure you want to delete {{ user.name }}? This action cannot be undone.',
+                                        userId: {{ user.id }},
+                                        userName: '{{ user.name }}',
+                                        callback: () => {
+                                            window.location.href = '{{ url_for('delete_user', user_id=user.id) }}';
+                                        }
+                                    })"
+                                    class="text-red-600 hover:text-red-900"
+                                    title="Delete user"
+                                >
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Course Statistics Section -->
+    <div class="bg-white rounded-lg shadow-md overflow-hidden mb-8">
+        <div class="px-6 py-4 bg-gray-50 border-b">
+            <h2 class="text-xl font-bold text-gray-800">Course Statistics</h2>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-6">
+            {% for stat in course_stats %}
+            <div class="bg-white border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition">
+                <div class="px-6 py-4 border-b bg-gray-50">
+                    <h3 class="font-bold text-gray-800">{{ stat.course.name }}</h3>
+                    <p class="text-sm text-gray-600">{{ stat.course.code }}</p>
+                </div>
+                <div class="px-6 py-4">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-sm text-gray-600">Students:</span>
+                        <span class="font-medium">{{ stat.enrollments }}</span>
+                    </div>
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-sm text-gray-600">Lectures:</span>
+                        <span class="font-medium">{{ stat.lectures }}</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm text-gray-600">Materials:</span>
+                        <span class="font-medium">{{ stat.materials }}</span>
+                    </div>
+                </div>
+                <div class="px-6 py-3 bg-gray-50 border-t">
+                    <a href="{{ url_for('courses.view_course', course_id=stat.course.id) }}" class="text-blue-600 hover:text-blue-800 text-sm">
+                        <i class="fas fa-eye mr-1"></i> View Course
+                    </a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Recent Attendance Section -->
+    <div class="bg-white rounded-lg shadow-md overflow-hidden">
+        <div class="px-6 py-4 bg-gray-50 border-b">
+            <h2 class="text-xl font-bold text-gray-800">Recent Attendance</h2>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            User
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Timestamp
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Status
+                        </th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for attendance in attendances[:10] %}
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="flex items-center">
+                                {% set user = users|selectattr('id', 'eq', attendance.user_id)|first %}
+                                {% if user %}
+                                <div class="flex-shrink-0 h-10 w-10">
+                                    <img class="h-10 w-10 rounded-full" src="{{ user.get_profile_pic_url() }}" alt="{{ user.name }}">
+                                </div>
+                                <div class="ml-4">
+                                    <div class="text-sm font-medium text-gray-900">{{ user.name }}</div>
+                                    <div class="text-sm text-gray-500">{{ user.email }}</div>
+                                </div>
+                                {% else %}
+                                <div class="text-sm text-gray-500">Unknown User (ID: {{ attendance.user_id }})</div>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {{ attendance.timestamp.strftime('%d %b %Y, %H:%M:%S') }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                Present
+                            </span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if attendances|length > 10 %}
+        <div class="px-6 py-3 bg-gray-50 border-t text-right">
+            <a href="{{ url_for('all_attendance') }}" class="text-blue-600 hover:text-blue-800 text-sm">
+                View All Attendance Records <i class="fas fa-arrow-right ml-1"></i>
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+<!-- Custom confirmation dialog -->
+<div
+    x-data="{
+        showConfirmDialog: false,
+        message: '',
+        userId: null,
+        userName: '',
+        confirmCallback: () => {}
+    }"
+    x-cloak
+    @show-confirm-dialog.window="
+        showConfirmDialog = true;
+        message = $event.detail.message;
+        userId = $event.detail.userId;
+        userName = $event.detail.userName;
+        confirmCallback = $event.detail.callback || (() => {});
+    "
+    class="fixed inset-0 z-50 overflow-y-auto"
+    x-show="showConfirmDialog"
+    style="display: none;"
+>
+    <!-- Backdrop -->
+    <div
+        class="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
+        x-show="showConfirmDialog"
+        x-transition:enter="transition ease-out duration-300"
+        x-transition:enter-start="opacity-0"
+        x-transition:enter-end="opacity-100"
+        x-transition:leave="transition ease-in duration-200"
+        x-transition:leave-start="opacity-100"
+        x-transition:leave-end="opacity-0"
+        @click="showConfirmDialog = false"
+    ></div>
+
+    <!-- Dialog -->
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div
+            class="bg-white rounded-lg shadow-xl max-w-md w-full p-6 transform transition-all"
+            x-show="showConfirmDialog"
+            x-transition:enter="transition ease-out duration-300"
+            x-transition:enter-start="opacity-0 translate-y-4"
+            x-transition:enter-end="opacity-100 translate-y-0"
+            x-transition:leave="transition ease-in duration-200"
+            x-transition:leave-start="opacity-100 translate-y-0"
+            x-transition:leave-end="opacity-0 translate-y-4"
+            @click.away="showConfirmDialog = false"
+        >
+            <div class="text-center">
+                <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
+                    <i class="fas fa-exclamation-triangle text-red-600"></i>
+                </div>
+                <h3 class="text-lg font-medium text-gray-900 mb-2">Confirm Action</h3>
+                <p class="text-sm text-gray-500" x-text="message"></p>
+            </div>
+            <div class="mt-5 flex justify-center space-x-3">
+                <button
+                    type="button"
+                    class="inline-flex justify-center px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-500"
+                    @click="showConfirmDialog = false"
+                >
+                    Cancel
+                </button>
+                <button
+                    type="button"
+                    class="inline-flex justify-center px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-red-500"
+                    @click="
+                        showConfirmDialog = false;
+                        $data.add(`Deleting user: ${userName}...`, 'warning', 2000);
+                        setTimeout(() => {
+                            confirmCallback();
+                        }, 500);
+                    "
+                >
+                    Delete
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- We're using the Alpine.js toast system from base.html now -->
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Array of inspirational quotes
+    const quotes = [
+        "Waiting is for giants...",
+        "Patience is a virtue worth cultivating...",
+        "Good things come to those who wait...",
+        "The best things in life are worth waiting for...",
+        "Patience is not the ability to wait, but how you act while waiting...",
+        "Everything comes to you at the right moment...",
+        "Patience is bitter, but its fruit is sweet...",
+        "The two most powerful warriors are patience and time..."
+    ];
+
+    // Handle generate user card with Alpine.js
+    function generateUserCard(userId, userName) {
+        // Show initial toast
+        const toastId = Alpine.evaluate(document.body, '$data.add(`Generating ID card for ${userName}...`, "info", 0)');
+
+        // Simulate progress with multiple toasts
+        let progress = 0;
+        let quoteIndex = 0;
+
+        const interval = setInterval(function() {
+            progress += 20;
+
+            if (progress <= 100) {
+                // Update with a new quote
+                const quote = quotes[quoteIndex % quotes.length];
+                quoteIndex++;
+
+                // Update toast message
+                Alpine.evaluate(document.body, `$data.remove(${toastId})`);
+                Alpine.evaluate(document.body, `$data.add("${quote} (${progress}%)", "info", 0)`);
+            }
+
+            if (progress >= 100) {
+                clearInterval(interval);
+
+                // Final success message
+                setTimeout(function() {
+                    Alpine.evaluate(document.body, `$data.remove(${toastId})`);
+                    Alpine.evaluate(document.body, '$data.add("ID card generated successfully!", "success", 3000)');
+
+                    // Redirect to download card URL
+                    window.location.href = `/auth/admin/user/${userId}/download_card`;
+                }, 500);
+            }
+        }, 800); // Update every 800ms for a total of ~4 seconds
+    }
+
+    // Add a welcome toast when admin page loads and check for URL parameters
+    document.addEventListener('DOMContentLoaded', function() {
+        setTimeout(() => {
+            // Welcome message
+            Alpine.evaluate(document.body, '$data.add("Welcome to the Admin Dashboard!", "info", 5000)');
+
+            // Check for URL parameters
+            const urlParams = new URLSearchParams(window.location.search);
+
+            // Check if a user was deleted
+            if (urlParams.has('deleted')) {
+                const userName = urlParams.get('name') || 'User';
+                Alpine.evaluate(document.body, `$data.add("${userName} has been deleted successfully!", "success", 5000)`);
+
+                // Clean up the URL
+                const newUrl = window.location.pathname;
+                window.history.replaceState({}, document.title, newUrl);
+            }
+        }, 500);
+    });
+</script>
+{% endblock %}

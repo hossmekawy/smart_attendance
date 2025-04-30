@@ -1,0 +1,51 @@
+<div x-data="cookieConsent()" x-show="!consentGiven" x-cloak class="fixed bottom-0 left-0 right-0 bg-gray-800 text-white p-4 z-50">
+    <div class="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between">
+        <div class="mb-4 md:mb-0">
+            <h3 class="text-lg font-bold mb-1">Camera and Cookie Consent</h3>
+            <p class="text-sm">
+                This site uses cookies and requires camera access for the face recognition attendance system. 
+                By clicking "Accept", you consent to the use of cookies and camera access.
+            </p>
+        </div>
+        <div class="flex space-x-4">
+            <button @click="giveConsent" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded">
+                Accept
+            </button>
+            <a href="https://www.example.com/privacy-policy" target="_blank" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded">
+                Learn More
+            </a>
+        </div>
+    </div>
+</div>
+
+<script>
+    function cookieConsent() {
+        return {
+            consentGiven: false,
+            
+            init() {
+                // Check if consent was already given
+                fetch('/check-cookie-consent')
+                    .then(response => response.json())
+                    .then(data => {
+                        this.consentGiven = data.consent;
+                    });
+            },
+            
+            giveConsent() {
+                fetch('/cookie-consent', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        this.consentGiven = true;
+                    }
+                });
+            }
+        }
+    }
+</script>

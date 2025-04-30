@@ -1,0 +1,177 @@
+{% extends "courses/base_courses.html" %}
+
+{% block course_content %}
+<div class="mb-6">
+    <a href="{{ url_for('courses.index') }}" class="text-blue-600 hover:text-blue-800">
+        <i class="fas fa-arrow-left mr-1"></i> Back to Courses
+    </a>
+</div>
+
+<div class="bg-white rounded-xl shadow-md overflow-hidden mb-8">
+    <div class="p-2 bg-gradient-to-r from-blue-500 to-indigo-600"></div>
+    <div class="p-6">
+        <div class="flex justify-between items-start">
+            <h1 class="text-3xl font-bold text-gray-800">{{ course.name }}</h1>
+            <span class="text-sm bg-blue-100 text-blue-800 px-3 py-1 rounded-full">{{ course.code }}</span>
+        </div>
+        <p class="text-gray-600 mt-2">{{ course.description }}</p>
+        
+        {% if current_user.is_admin %}
+        <div class="mt-4 flex space-x-2">
+            <a href="{{ url_for('courses.edit_course', course_id=course.id) }}" class="px-3 py-1 bg-blue-600 text-white rounded text-sm">
+                <i class="fas fa-edit mr-1"></i> Edit Course
+            </a>
+            <a href="{{ url_for('courses.course_lectures', course_id=course.id) }}" class="px-3 py-1 bg-purple-600 text-white rounded text-sm">
+                <i class="fas fa-chalkboard-teacher mr-1"></i> Manage Lectures
+            </a>
+            <a href="{{ url_for('courses.course_materials', course_id=course.id) }}" class="px-3 py-1 bg-green-600 text-white rounded text-sm">
+                <i class="fas fa-file-alt mr-1"></i> Manage Materials
+            </a>
+            <a href="{{ url_for('courses.course_enrollments', course_id=course.id) }}" class="px-3 py-1 bg-yellow-600 text-white rounded text-sm">
+                <i class="fas fa-users mr-1"></i> Manage Students
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{% set current_lecture = course.get_current_lecture() %}
+{% if current_lecture %}
+<div class="bg-green-50 border-l-4 border-green-500 text-green-700 p-4 rounded mb-8 animate-pulse">
+    <div class="flex">
+        <div class="flex-shrink-0">
+            <i class="fas fa-chalkboard-teacher mt-1"></i>
+        </div>
+        <div class="ml-3">
+            <p class="font-medium">Lecture in progress: {{ current_lecture.title }}</p>
+            <p class="text-sm">
+                {{ current_lecture.start_time.strftime('%I:%M %p') }} - {{ current_lecture.end_time.strftime('%I:%M %p') }}
+                {% if current_lecture.location %}
+                at {{ current_lecture.location }}
+                {% endif %}
+            </p>
+            <a href="{{ url_for('courses.view_lecture', lecture_id=current_lecture.id) }}" class="mt-2 inline-block px-3 py-1 bg-green-600 text-white rounded text-sm">
+                Go to Lecture
+            </a>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+    <!-- Lectures by Week -->
+    <div class="lg:col-span-2">
+        <h2 class="text-2xl font-bold text-gray-800 mb-4">Lectures</h2>
+        
+        {% if lectures_by_week %}
+            <div class="space-y-6">
+                {% for week_number, lectures in lectures_by_week.items()|sort %}
+                <div class="bg-white rounded-lg shadow-md overflow-hidden">
+                    <div class="bg-blue-600 text-white px-4 py-2 font-medium">
+                        Week {{ week_number }}
+                    </div>
+                    <div class="p-4">
+                        <div class="divide-y divide-gray-200">
+                            {% for lecture in lectures|sort(attribute='start_time') %}
+                            <div class="py-3 {% if loop.first %}pt-0{% endif %} {% if loop.last %}pb-0{% endif %}">
+                                <div class="flex justify-between items-start">
+                                    <div>
+                                        <h3 class="font-medium text-gray-800">{{ lecture.title }}</h3>
+                                        <p class="text-sm text-gray-600">
+                                            {{ lecture.day_of_week }}, 
+                                            {{ lecture.start_time.strftime('%d %b %Y, %I:%M %p') }} - 
+                                            {{ lecture.end_time.strftime('%I:%M %p') }}
+                                            {% if lecture.location %}
+                                            at {{ lecture.location }}
+                                            {% endif %}
+                                        </p>
+                                    </div>
+                                    <a href="{{ url_for('courses.view_lecture', lecture_id=lecture.id) }}" class="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm hover:bg-blue-200 transition">
+                                        View
+                                    </a>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 text-gray-600">
+                No lectures have been scheduled for this course yet.
+                {% if current_user.is_admin %}
+                <a href="{{ url_for('courses.new_lecture', course_id=course.id) }}" class="text-blue-600 hover:underline">Add a lecture</a>
+                {% endif %}
+            </div>
+        {% endif %}
+    </div>
+    
+    <!-- Materials by Week -->
+    <div>
+        <h2 class="text-2xl font-bold text-gray-800 mb-4">Course Materials</h2>
+        
+        {% if materials_by_week %}
+            <div class="space-y-4">
+                {% for week_number, materials in materials_by_week.items()|sort %}
+                <div class="bg-white rounded-lg shadow-md overflow-hidden">
+                    <div class="bg-green-600 text-white px-4 py-2 font-medium">
+                        Week {{ week_number }} Materials
+                    </div>
+                    <div class="p-4">
+                        <div class="divide-y divide-gray-200">
+                            {% for material in materials|sort(attribute='title') %}
+                            <div class="py-3 {% if loop.first %}pt-0{% endif %} {% if loop.last %}pb-0{% endif %}">
+                                <div class="flex items-start">
+                                    <div class="mr-3">
+                                        {% if material.file_type == 'pdf' %}
+                                            <i class="fas fa-file-pdf text-red-500 text-xl"></i>
+                                        {% elif material.file_type in ['doc', 'docx'] %}
+                                            <i class="fas fa-file-word text-blue-500 text-xl"></i>
+                                        {% elif material.file_type in ['ppt', 'pptx'] %}
+                                            <i class="fas fa-file-powerpoint text-orange-500 text-xl"></i>
+                                        {% elif material.file_type in ['xls', 'xlsx'] %}
+                                            <i class="fas fa-file-excel text-green-500 text-xl"></i>
+                                        {% else %}
+                                            <i class="fas fa-file text-gray-500 text-xl"></i>
+                                        {% endif %}
+                                    </div>
+                                    <div class="flex-grow">
+                                        <h3 class="font-medium text-gray-800">{{ material.title }}</h3>
+                                        {% if material.description %}
+                                        <p class="text-sm text-gray-600">{{ material.description }}</p>
+                                        {% endif %}
+                                        <div class="mt-1 flex items-center text-sm">
+                                            <span class="text-gray-500">{{ material.file_type.upper() }}</span>
+                                            <span class="mx-2">•</span>
+                                            <span class="text-gray-500">{{ material.uploaded_at.strftime('%d %b %Y') }}</span>
+                                            
+                                            {% if material.is_viewed_by(current_user.id) %}
+                                            <span class="ml-2 px-2 py-0.5 bg-green-100 text-green-800 rounded-full text-xs">
+                                                <i class="fas fa-check mr-1"></i> Viewed
+                                            </span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <a href="{{ url_for('courses.view_material', material_id=material.id) }}" class="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm hover:bg-green-200 transition">
+                                        Download
+                                    </a>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 text-gray-600">
+                No materials have been uploaded for this course yet.
+                {% if current_user.is_admin %}
+                <a href="{{ url_for('courses.new_material', course_id=course.id) }}" class="text-blue-600 hover:underline">Upload materials</a>
+                {% endif %}
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto text-center py-12">
+    <h1 class="text-6xl font-bold text-red-500 mb-6">500</h1>
+    <h2 class="text-3xl font-bold mb-4">Server Error</h2>
+    <p class="text-gray-600 mb-8">Something went wrong on our end. Please try again later.</p>
+    <a href="{{ url_for('index') }}" class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg inline-block">
+        Return to Home
+    </a>
+</div>
+{% endblock %}

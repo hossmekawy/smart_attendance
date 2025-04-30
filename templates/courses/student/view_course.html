@@ -1,0 +1,245 @@
+{% extends "courses/base_courses.html" %}
+
+{% block course_content %}
+<div class="mb-8">
+    <div class="bg-white rounded-xl shadow-md overflow-hidden">
+        <div class="p-2 bg-gradient-to-r from-blue-500 to-indigo-600"></div>
+        <div class="p-6">
+            <div class="flex justify-between items-start">
+                <div>
+                    <h1 class="text-3xl font-bold text-gray-800 mb-2">{{ course.name }}</h1>
+                    <p class="text-gray-600">{{ course.code }}</p>
+                </div>
+                <div class="text-right">
+                    <div class="text-sm text-gray-600 mb-1">
+                        <i class="fas fa-chalkboard-teacher mr-1"></i> {{ course.instructor.name }}
+                    </div>
+                    <div class="text-sm text-gray-600">
+                        <i class="fas fa-users mr-1"></i> {{ course.get_enrollment_count() }} students enrolled
+                    </div>
+                </div>
+            </div>
+            
+            {% if course.description %}
+                <div class="mt-6">
+                    <h3 class="text-lg font-medium text-gray-800 mb-2">Course Description</h3>
+                    <p class="text-gray-600">{{ course.description }}</p>
+                </div>
+            {% endif %}
+            
+            <div class="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="bg-blue-50 p-4 rounded-lg">
+                    <div class="text-sm text-blue-500">Total Lectures</div>
+                    <div class="text-2xl font-bold">{{ course.get_lecture_count() }}</div>
+                </div>
+                
+                <div class="bg-green-50 p-4 rounded-lg">
+                    <div class="text-sm text-green-500">Your Attendance</div>
+                    <div class="text-2xl font-bold">{{ enrollment.get_attendance_percentage() }}%</div>
+                </div>
+                
+                <div class="bg-purple-50 p-4 rounded-lg">
+                    <div class="text-sm text-purple-500">Course Materials</div>
+                    <div class="text-2xl font-bold">{{ course.get_material_count() }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Upcoming Lectures -->
+{% if upcoming_lectures %}
+<div class="mb-8">
+    <h2 class="text-2xl font-bold text-gray-800 mb-4">Upcoming Lectures</h2>
+    <div class="space-y-4">
+        {% for lecture in upcoming_lectures %}
+        <div class="bg-white rounded-lg shadow-md overflow-hidden">
+            <div class="p-4 border-l-4 border-blue-500">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <h3 class="text-lg font-medium text-gray-800">{{ lecture.title }}</h3>
+                        <p class="text-gray-600 text-sm">
+                            {{ lecture.start_time.strftime('%A, %d %b %Y') }} • 
+                            {{ lecture.start_time.strftime('%I:%M %p') }} - {{ lecture.end_time.strftime('%I:%M %p') }}
+                        </p>
+                        {% if lecture.location %}
+                            <p class="text-gray-600 text-sm mt-1">
+                                <i class="fas fa-map-marker-alt mr-1"></i> {{ lecture.location }}
+                            </p>
+                            {% endif %}
+                        </div>
+                        <div>
+                            {% if lecture.is_active() %}
+                                <a href="{{ url_for('courses.mark_attendance', lecture_id=lecture.id) }}" class="px-3 py-1 bg-green-600 text-white rounded text-sm">
+                                    <i class="fas fa-check-circle mr-1"></i> Mark Attendance
+                                </a>
+                            {% else %}
+                                <span class="px-3 py-1 bg-gray-200 text-gray-600 rounded text-sm">
+                                    <i class="fas fa-clock mr-1"></i> Upcoming
+                                </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Course Materials -->
+    <div class="mb-8">
+        <h2 class="text-2xl font-bold text-gray-800 mb-4">Course Materials</h2>
+        
+        {% if materials_by_week %}
+            <div class="space-y-6">
+                {% for week_number, materials in materials_by_week.items()|sort %}
+                <div class="bg-white rounded-lg shadow-md overflow-hidden">
+                    <div class="bg-green-600 text-white px-4 py-2 font-medium">
+                        Week {{ week_number }}
+                    </div>
+                    <div class="p-0">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Title
+                                    </th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Type
+                                    </th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Uploaded
+                                    </th>
+                                    <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Actions
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                {% for material in materials|sort(attribute='title') %}
+                                <tr>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="text-sm font-medium text-gray-900">{{ material.title }}</div>
+                                        {% if material.description %}
+                                        <div class="text-sm text-gray-500">{{ material.description|truncate(50) }}</div>
+                                        {% endif %}
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="flex items-center">
+                                            {% if material.file_type == 'pdf' %}
+                                                <i class="fas fa-file-pdf text-red-500 mr-2"></i>
+                                            {% elif material.file_type in ['doc', 'docx'] %}
+                                                <i class="fas fa-file-word text-blue-500 mr-2"></i>
+                                            {% elif material.file_type in ['ppt', 'pptx'] %}
+                                                <i class="fas fa-file-powerpoint text-orange-500 mr-2"></i>
+                                            {% elif material.file_type in ['xls', 'xlsx'] %}
+                                                <i class="fas fa-file-excel text-green-500 mr-2"></i>
+                                            {% else %}
+                                                <i class="fas fa-file text-gray-500 mr-2"></i>
+                                            {% endif %}
+                                            <span class="text-sm text-gray-900">{{ material.file_type.upper() }}</span>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        {{ material.uploaded_at.strftime('%d %b %Y') }}
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                        <a href="{{ url_for('courses.view_material', material_id=material.id) }}" class="text-blue-600 hover:text-blue-900">
+                                            <i class="fas fa-download mr-1"></i> Download
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="bg-blue-50 border-l-4 border-blue-500 text-blue-700 p-4 rounded">
+                <div class="flex">
+                    <div class="flex-shrink-0">
+                        <i class="fas fa-info-circle mt-1"></i>
+                    </div>
+                    <div class="ml-3">
+                        <p class="text-sm">
+                            No materials have been uploaded for this course yet.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+    
+    <!-- Past Lectures -->
+    <div>
+        <h2 class="text-2xl font-bold text-gray-800 mb-4">Past Lectures</h2>
+        
+        {% if past_lectures %}
+            <div class="bg-white rounded-lg shadow-md overflow-hidden">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Lecture
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Date & Time
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Location
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Attendance
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for lecture in past_lectures %}
+                        <tr>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm font-medium text-gray-900">{{ lecture.title }}</div>
+                                <div class="text-xs text-gray-500">Week {{ lecture.week_number }}</div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {{ lecture.start_time.strftime('%d %b %Y') }}<br>
+                                {{ lecture.start_time.strftime('%I:%M %p') }} - {{ lecture.end_time.strftime('%I:%M %p') }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {{ lecture.location or 'N/A' }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                {% if lecture.user_attended(current_user.id) %}
+                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                        Present
+                                    </span>
+                                {% else %}
+                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+                                        Absent
+                                    </span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="bg-blue-50 border-l-4 border-blue-500 text-blue-700 p-4 rounded">
+                <div class="flex">
+                    <div class="flex-shrink-0">
+                        <i class="fas fa-info-circle mt-1"></i>
+                    </div>
+                    <div class="ml-3">
+                        <p class="text-sm">
+                            No past lectures for this course.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+    {% endblock %}
+    

@@ -1,0 +1,282 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto" x-data="registerForm()">
+    <h1 class="text-3xl font-bold mb-6">Register Your Face</h1>
+    
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="bg-white p-6 rounded-lg shadow-md">
+            <h2 class="text-xl font-bold mb-4">Face Capture</h2>
+            <div class="relative">
+                <!-- Video element for camera feed -->
+                <video x-ref="video" class="w-full rounded border" autoplay playsinline></video>
+                
+                <!-- Canvas for capturing the image (hidden) -->
+                <canvas x-ref="canvas" style="display: none;"></canvas>
+                
+                <!-- Captured image preview -->
+                <img x-ref="preview" x-show="faceDetected" class="w-full rounded border mt-2" style="display: none;"></img>
+                
+                <button 
+                    @click="captureFace" 
+                    class="absolute bottom-4 right-4 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-full shadow-md"
+                    :disabled="faceDetected"
+                >
+                    <span x-text="faceDetected ? 'Face Captured' : 'Capture Face'"></span>
+                </button>
+                
+                <button 
+                    x-show="faceDetected"
+                    @click="resetCamera" 
+                    class="absolute bottom-4 left-4 bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-full shadow-md"
+                >
+                    Reset
+                </button>
+            </div>
+            <div x-show="captureMessage" class="mt-4 p-3 rounded" :class="captureSuccess ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'">
+                <p x-text="captureMessage"></p>
+            </div>
+        </div>
+        
+        <div class="bg-white p-6 rounded-lg shadow-md">
+            <h2 class="text-xl font-bold mb-4">User Information</h2>
+            <form @submit.prevent="submitForm" method="post">
+                <div class="mb-4">
+                    <label for="name" class="block text-gray-700 mb-2">Full Name</label>
+                    <input type="text" id="name" name="name" x-model="formData.name" required
+                           class="w-full px-3 py-2 border rounded focus:outline-none focus:ring focus:border-blue-300">
+                </div>
+                
+                <div class="mb-4">
+                    <label for="email" class="block text-gray-700 mb-2">Email</label>
+                    <input type="email" id="email" name="email" x-model="formData.email" required
+                           @blur="checkEmail()"
+                           class="w-full px-3 py-2 border rounded focus:outline-none focus:ring"
+                           :class="emailError ? 'border-red-300 focus:border-red-500' : 'focus:border-blue-300'">
+                    <p x-show="emailError" class="text-red-500 text-sm mt-1" x-text="emailError"></p>
+                </div>
+                
+                <div class="mb-4">
+                    <label for="custom_data" class="block text-gray-700 mb-2">Additional Information</label>
+                    <textarea id="custom_data" name="custom_data" x-model="formData.custom_data" rows="3"
+                              class="w-full px-3 py-2 border rounded focus:outline-none focus:ring focus:border-blue-300"></textarea>
+                </div>
+                
+                <button type="submit" 
+                        class="w-full bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded"
+                        :disabled="!faceDetected || emailError || isSubmitting">
+                    <span x-show="!isSubmitting">Register</span>
+                    <span x-show="isSubmitting">
+                        <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Processing...
+                    </span>
+                </button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Success Modal -->
+    <div x-show="showSuccessModal" x-cloak class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
+            <h3 class="text-2xl font-bold text-green-600 mb-4">Registration Successful!</h3>
+            <p class="mb-6">Your face has been registered successfully. You can now use the attendance system.</p>
+            <div class="flex justify-end">
+                <button @click="redirectToHome" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">
+                    Go to Home
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Error Modal -->
+    <div x-show="showErrorModal" x-cloak class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-lg shadow-lg max-w-md w-full border-l-4 border-red-500">
+            <h3 class="text-2xl font-bold text-red-600 mb-4">Registration Failed</h3>
+            <p class="mb-6" x-text="errorMessage || 'An error occurred during registration. Please try again.'"></p>
+            <div class="flex justify-end">
+                <button @click="showErrorModal = false" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function registerForm() {
+        return {
+            formData: {
+                name: '',
+                email: '',
+                custom_data: '',
+            },
+            faceDetected: false,
+            captureMessage: '',
+            captureSuccess: false,
+            showSuccessModal: false,
+            showErrorModal: false,
+            errorMessage: '',
+            emailError: '',
+            isSubmitting: false,
+            
+            init() {
+                // Start the camera when component initializes
+                this.startCamera();
+            },
+            
+            startCamera() {
+                const video = this.$refs.video;
+                
+                // Get access to the camera
+                if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                    navigator.mediaDevices.getUserMedia({ video: true })
+                        .then(stream => {
+                            video.srcObject = stream;
+                        })
+                        .catch(err => {
+                            console.error("Error accessing the camera: ", err);
+                            this.captureMessage = "Error accessing the camera. Please allow camera access.";
+                            this.captureSuccess = false;
+                        });
+                } else {
+                    this.captureMessage = "Camera not supported in your browser.";
+                    this.captureSuccess = false;
+                }
+            },
+            
+            captureFace() {
+                const video = this.$refs.video;
+                const canvas = this.$refs.canvas;
+                const preview = this.$refs.preview;
+                
+                // Set canvas dimensions to match video
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                
+                // Draw the video frame to the canvas
+                const context = canvas.getContext('2d');
+                context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                
+                // Show preview
+                preview.src = canvas.toDataURL('image/jpeg');
+                preview.style.display = 'block';
+                
+                // Convert canvas to blob and send to server
+                canvas.toBlob(blob => {
+                    const formData = new FormData();
+                    formData.append('image', blob, 'face.jpg');
+                    
+                    fetch('/register', {
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        this.captureMessage = data.message;
+                        this.captureSuccess = data.success;
+                        if (data.success) {
+                            this.faceDetected = true;
+                            // Hide video and show preview
+                            video.style.display = 'none';
+                            preview.style.display = 'block';
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        this.captureMessage = 'An error occurred while capturing the face.';
+                        this.captureSuccess = false;
+                    });
+                }, 'image/jpeg', 0.95);
+            },
+            
+            checkEmail() {
+                if (!this.formData.email) {
+                    this.emailError = '';
+                    return;
+                }
+                
+                // Check if email already exists
+                fetch(`/check_email?email=${encodeURIComponent(this.formData.email)}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.exists) {
+                            this.emailError = 'This email is already registered';
+                        } else {
+                            this.emailError = '';
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error checking email:', error);
+                    });
+            },
+            
+            submitForm() {
+                if (!this.faceDetected) {
+                    this.captureMessage = 'Please capture your face first.';
+                    this.captureSuccess = false;
+                    return;
+                }
+                
+                if (this.emailError) {
+                    this.showErrorModal = true;
+                    this.errorMessage = 'Please fix the email error before submitting.';
+                    return;
+                }
+                
+                this.isSubmitting = true;
+                
+                // Create form data
+                const formData = new FormData();
+                formData.append('name', this.formData.name);
+                formData.append('email', this.formData.email);
+                formData.append('custom_data', this.formData.custom_data);
+                
+                // Submit the form
+                fetch('/register', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => {
+                    if (response.redirected) {
+                        // Show success modal instead of redirecting immediately
+                        this.showSuccessModal = true;
+                    } else {
+                        return response.json();
+                    }
+                })
+                .then(data => {
+                    this.isSubmitting = false;
+                    if (data && !data.success) {
+                        this.showErrorModal = true;
+                        this.errorMessage = data.message;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    this.isSubmitting = false;
+                    this.showErrorModal = true;
+                    this.errorMessage = 'An error occurred during registration.';
+                });
+            },
+            
+            resetCamera() {
+                this.faceDetected = false;
+                const video = this.$refs.video;
+                const preview = this.$refs.preview;
+                
+                // Show video and hide preview
+                video.style.display = 'block';
+                preview.style.display = 'none';
+                this.captureMessage = '';
+            },
+            
+            redirectToHome() {
+                window.location.href = '/';
+            }
+        }
+    }
+</script>
+{% endblock %}

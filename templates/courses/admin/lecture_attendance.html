@@ -1,0 +1,390 @@
+{% extends "courses/base_courses.html" %}
+
+{% block course_content %}
+<div class="mb-6">
+    <a href="{{ url_for('courses.course_attendance', course_id=course.id) }}" class="text-blue-600 hover:text-blue-800">
+        <i class="fas fa-arrow-left mr-1"></i> Back to Course Attendance
+    </a>
+</div>
+
+<div class="mb-6 flex justify-between items-center">
+    <div>
+        <h1 class="text-3xl font-bold text-gray-800">Lecture Attendance</h1>
+        <p class="text-gray-600">{{ lecture.title }} - {{ lecture.start_time.strftime('%d %b %Y, %H:%M') }}</p>
+    </div>
+    <div class="flex space-x-3">
+        <a href="{{ url_for('courses.export_attendance', lecture_id=lecture.id) }}" class="px-4 py-2 bg-green-600 text-white rounded-lg shadow hover:bg-green-700 transition">
+            <i class="fas fa-file-excel mr-2"></i>Export to Excel
+        </a>
+        <a href="{{ url_for('courses.print_attendance', lecture_id=lecture.id) }}" target="_blank" class="px-4 py-2 bg-blue-600 text-white rounded-lg shadow hover:bg-blue-700 transition">
+            <i class="fas fa-print mr-2"></i>Print
+        </a>
+    </div>
+</div>
+
+<div class="bg-white rounded-lg shadow-md overflow-hidden">
+    <div class="flex justify-between items-center px-6 py-3 bg-gray-50 border-b">
+        <h2 class="text-lg font-medium text-gray-800" id="attendance-stats">
+            Attendance: <span id="attendance-count">{{ attendance_count }}</span>/<span id="enrolled-count">{{ enrolled_count }}</span> 
+            (<span id="attendance-percentage">{{ (attendance_count / enrolled_count * 100)|round|int if enrolled_count > 0 else 0 }}</span>%)
+        </h2>
+        <div class="flex items-center">
+            <input type="text" id="searchInput" placeholder="Search students..."
+                   class="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+        </div>
+    </div>
+    
+    <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-50">
+            <tr>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Student
+                </th>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    ID
+                </th>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Status
+                </th>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Time
+                </th>
+                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
+                </th>
+            </tr>
+        </thead>
+        <tbody class="bg-white divide-y divide-gray-200" id="attendanceTable">
+            {% for item in student_attendance %}
+            <tr class="student-row" data-student-id="{{ item.student.id }}">
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0 h-10 w-10">
+                            <img class="h-10 w-10 rounded-full" src="{{ item.student.get_profile_pic_url() }}" alt="{{ item.student.name }}">
+                        </div>
+                        <div class="ml-4">
+                            <div class="text-sm font-medium text-gray-900 student-name">{{ item.student.name }}</div>
+                            <div class="text-sm text-gray-500 student-email">{{ item.student.email }}</div>
+                        </div>
+                    </div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="text-sm text-gray-900 student-id">{{ item.student.custom_data or 'N/A' }}</div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap status-cell">
+                    {% if item.present %}
+                    <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 status-badge">
+                        Present
+                    </span>
+                    {% else %}
+                    <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800 status-badge">
+                        Absent
+                    </span>
+                    {% endif %}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 timestamp-cell">
+                    {{ item.timestamp.strftime('%H:%M:%S') if item.timestamp else 'N/A' }}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium action-cell">
+                    {% if item.present %}
+                    <button type="button" class="text-red-600 hover:text-red-900 remove-attendance-btn" 
+                            data-attendance-id="{{ item.attendance_id }}">
+                        <i class="fas fa-user-times"></i> Remove
+                    </button>
+                    {% else %}
+                    <button type="button" class="text-green-600 hover:text-green-900 mark-present-btn" 
+                            data-lecture-id="{{ lecture.id }}" 
+                            data-student-id="{{ item.student.id }}">
+                        <i class="fas fa-user-check"></i> Mark Present
+                    </button>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Search functionality for attendance table
+    document.getElementById('searchInput').addEventListener('keyup', function() {
+        const searchValue = this.value.toLowerCase();
+        const rows = document.querySelectorAll('#attendanceTable .student-row');
+        
+        rows.forEach(row => {
+            const name = row.querySelector('.student-name').textContent.toLowerCase();
+            const email = row.querySelector('.student-email').textContent.toLowerCase();
+            const id = row.querySelector('.student-id').textContent.toLowerCase();
+            
+            if (name.includes(searchValue) || email.includes(searchValue) || id.includes(searchValue)) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    });
+    
+    // Mark Present functionality with AJAX
+    document.querySelectorAll('.mark-present-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const lectureId = this.getAttribute('data-lecture-id');
+            const studentId = this.getAttribute('data-student-id');
+            const row = this.closest('tr');
+            
+            // Show loading state
+            this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+            this.disabled = true;
+            
+            fetch(`/courses/admin/lecture/${lectureId}/mark_attendance/${studentId}`, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Update the row to show present status
+                    const statusCell = row.querySelector('.status-cell');
+                    statusCell.innerHTML = `
+                        <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 status-badge">
+                            Present
+                        </span>
+                    `;
+                    
+                    // Update the timestamp
+                    const timestampCell = row.querySelector('.timestamp-cell');
+                    timestampCell.textContent = data.timestamp;
+                    
+                    // Update the action button
+                    const actionCell = row.querySelector('.action-cell');
+                    actionCell.innerHTML = `
+                        <button type="button" class="text-red-600 hover:text-red-900 remove-attendance-btn" 
+                                data-attendance-id="${data.attendance_id}">
+                            <i class="fas fa-user-times"></i> Remove
+                        </button>
+                    `;
+                    
+                    // Add event listener to the new remove button
+                    actionCell.querySelector('.remove-attendance-btn').addEventListener('click', handleRemoveAttendance);
+                    
+                    // Update attendance count
+                    updateAttendanceStats(1);
+                    
+                    // Show success message
+                    showNotification('Attendance marked successfully', 'success');
+                } else {
+                    // Show error message
+                    showNotification(data.message || 'Failed to mark attendance', 'error');
+                    
+                    // Reset button
+                    this.innerHTML = '<i class="fas fa-user-check"></i> Mark Present';
+                    this.disabled = false;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showNotification('An error occurred', 'error');
+                
+                // Reset button
+                this.innerHTML = '<i class="fas fa-user-check"></i> Mark Present';
+                this.disabled = false;
+            });
+        });
+    });
+    
+    // Remove Attendance functionality with AJAX
+    document.querySelectorAll('.remove-attendance-btn').forEach(button => {
+        button.addEventListener('click', handleRemoveAttendance);
+    });
+    
+    function handleRemoveAttendance() {
+        const attendanceId = this.getAttribute('data-attendance-id');
+        const row = this.closest('tr');
+        
+        if (confirm('Are you sure you want to remove this attendance record?')) {
+            // Show loading state
+            this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+            this.disabled = true;
+            
+            fetch(`/courses/admin/attendance/${attendanceId}/remove`, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Update the row to show absent status
+                    const statusCell = row.querySelector('.status-cell');
+                    statusCell.innerHTML = `
+                        <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800 status-badge">
+                            Absent
+                        </span>
+                    `;
+                    
+                    // Update the timestamp
+                    const timestampCell = row.querySelector('.timestamp-cell');
+                    timestampCell.textContent = 'N/A';
+                    
+                    // Update the action button
+                    const actionCell = row.querySelector('.action-cell');
+                    const studentId = row.getAttribute('data-student-id');
+                    const lectureId = document.querySelector('.mark-present-btn')?.getAttribute('data-lecture-id');
+                    
+                    actionCell.innerHTML = `
+                        <button type="button" class="text-green-600 hover:text-green-900 mark-present-btn" 
+                                data-lecture-id="${lectureId}" 
+                                data-student-id="${studentId}">
+                            <i class="fas fa-user-check"></i> Mark Present
+                        </button>
+                    `;
+                    
+                    // Add event listener to the new mark present button
+                    actionCell.querySelector('.mark-present-btn').addEventListener('click', function() {
+                        const lectureId = this.getAttribute('data-lecture-id');
+                        const studentId = this.getAttribute('data-student-id');
+                        markStudentPresent(this, lectureId, studentId);
+                    });
+                    
+                    // Update attendance count
+                    updateAttendanceStats(-1);
+                    
+                    // Show success message
+                    showNotification('Attendance removed successfully', 'success');
+                } else {
+                    // Show error message
+                    showNotification(data.message || 'Failed to remove attendance', 'error');
+                    
+                    // Reset button
+                    this.innerHTML = '<i class="fas fa-user-times"></i> Remove';
+                    this.disabled = false;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showNotification('An error occurred', 'error');
+                
+                // Reset button
+                this.innerHTML = '<i class="fas fa-user-times"></i> Remove';
+                this.disabled = false;
+            });
+        }
+    }
+    
+    // Function to mark a student as present
+    function markStudentPresent(button, lectureId, studentId) {
+        const row = button.closest('tr');
+        
+        // Show loading state
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+        button.disabled = true;
+        
+        fetch(`/courses/admin/lecture/${lectureId}/mark_attendance/${studentId}`, {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Update the row to show present status
+                const statusCell = row.querySelector('.status-cell');
+                statusCell.innerHTML = `
+                    <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 status-badge">
+                        Present
+                    </span>
+                `;
+                
+                // Update the timestamp
+                const timestampCell = row.querySelector('.timestamp-cell');
+                timestampCell.textContent = data.timestamp;
+                
+                // Update the action button
+                const actionCell = row.querySelector('.action-cell');
+                actionCell.innerHTML = `
+                    <button type="button" class="text-red-600 hover:text-red-900 remove-attendance-btn" 
+                            data-attendance-id="${data.attendance_id}">
+                        <i class="fas fa-user-times"></i> Remove
+                    </button>
+                `;
+                
+                // Add event listener to the new remove button
+                actionCell.querySelector('.remove-attendance-btn').addEventListener('click', handleRemoveAttendance);
+                
+                // Update attendance count
+                updateAttendanceStats(1);
+                
+                // Show success message
+                showNotification('Attendance marked successfully', 'success');
+            } else {
+                // Show error message
+                showNotification(data.message || 'Failed to mark attendance', 'error');
+                
+                // Reset button
+                button.innerHTML = '<i class="fas fa-user-check"></i> Mark Present';
+                button.disabled = false;
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showNotification('An error occurred', 'error');
+            
+            // Reset button
+            button.innerHTML = '<i class="fas fa-user-check"></i> Mark Present';
+            button.disabled = false;
+        });
+    }
+    
+    // Function to update attendance statistics
+    function updateAttendanceStats(change) {
+        const countElement = document.getElementById('attendance-count');
+        const enrolledElement = document.getElementById('enrolled-count');
+        const percentageElement = document.getElementById('attendance-percentage');
+        
+        const currentCount = parseInt(countElement.textContent);
+        const enrolledCount = parseInt(enrolledElement.textContent);
+        
+        // Update the count
+        const newCount = currentCount + change;
+        countElement.textContent = newCount;
+        
+        // Update the percentage
+        const newPercentage = Math.round((newCount / enrolledCount) * 100);
+        percentageElement.textContent = newPercentage;
+    }
+    
+    // Function to show notification
+    function showNotification(message, type) {
+        // Create notification element
+        const notification = document.createElement('div');
+        notification.className = `fixed top-4 right-4 px-4 py-2 rounded-lg shadow-lg z-50 ${
+            type === 'success' ? 'bg-green-500 text-white' : 
+            type === 'error' ? 'bg-red-500 text-white' : 
+            'bg-blue-500 text-white'
+        }`;
+        
+        notification.innerHTML = `
+            <div class="flex items-center">
+                <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'} mr-2"></i>
+                <span>${message}</span>
+            </div>
+        `;
+        
+        // Add to document
+        document.body.appendChild(notification);
+        
+        // Remove after 3 seconds
+        setTimeout(() => {
+            notification.classList.add('opacity-0', 'transition-opacity', 'duration-500');
+            setTimeout(() => {
+                document.body.removeChild(notification);
+            }, 500);
+        }, 3000);
+    }
+</script>
+{% endblock %}

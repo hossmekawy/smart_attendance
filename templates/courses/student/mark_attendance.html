@@ -1,0 +1,251 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="py-8">
+    <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="mb-6">
+            <a href="{{ url_for('courses.student_view_course', course_id=lecture.course_id) }}" class="text-blue-600 hover:text-blue-800">
+                <i class="fas fa-arrow-left mr-1"></i> Back to Course
+            </a>
+        </div>
+        
+        <div class="bg-white rounded-xl shadow-md overflow-hidden mb-8">
+            <div class="p-2 bg-gradient-to-r from-green-500 to-teal-600"></div>
+            <div class="p-6">
+                <h1 class="text-3xl font-bold text-gray-800 mb-2">Mark Attendance</h1>
+                <div class="text-gray-600 mb-6">
+                    <p>{{ lecture.title }} - {{ course.name }} ({{ course.code }})</p>
+                    <p>{{ lecture.start_time.strftime('%A, %d %b %Y') }} • 
+                       {{ lecture.start_time.strftime('%I:%M %p') }} - {{ lecture.end_time.strftime('%I:%M %p') }}</p>
+                    {% if lecture.location %}
+                        <p><i class="fas fa-map-marker-alt mr-1"></i> {{ lecture.location }}</p>
+                    {% endif %}
+                </div>
+                
+                <div id="attendance-status" class="mb-6">
+                    {% if already_attended %}
+                        <div class="bg-green-50 border-l-4 border-green-500 text-green-700 p-4 rounded">
+                            <div class="flex">
+                                <div class="flex-shrink-0">
+                                    <i class="fas fa-check-circle mt-1"></i>
+                                </div>
+                                <div class="ml-3">
+                                    <p class="text-sm font-medium">
+                                        Your attendance has already been recorded for this lecture.
+                                    </p>
+                                    <p class="text-sm mt-1">
+                                        Recorded at: {{ attendance_time.strftime('%I:%M %p') }}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    {% elif not lecture.is_active() %}
+                        <div class="bg-yellow-50 border-l-4 border-yellow-500 text-yellow-700 p-4 rounded">
+                            <div class="flex">
+                                <div class="flex-shrink-0">
+                                    <i class="fas fa-exclamation-triangle mt-1"></i>
+                                </div>
+                                <div class="ml-3">
+                                    <p class="text-sm font-medium">
+                                        This lecture is not currently active for attendance.
+                                    </p>
+                                    <p class="text-sm mt-1">
+                                        Attendance can only be marked during the scheduled lecture time.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="bg-blue-50 border-l-4 border-blue-500 text-blue-700 p-4 rounded">
+                            <div class="flex">
+                                <div class="flex-shrink-0">
+                                    <i class="fas fa-info-circle mt-1"></i>
+                                </div>
+                                <div class="ml-3">
+                                    <p class="text-sm font-medium">
+                                        Ready to mark your attendance.
+                                    </p>
+                                    <p class="text-sm mt-1">
+                                        Please look at the camera and click the button below.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+                
+                <div id="camera-container" class="mb-6 {% if already_attended or not lecture.is_active() %}hidden{% endif %}">
+                    <div class="relative">
+                        <video id="video" class="w-full h-auto rounded-lg shadow-md" autoplay></video>
+                        <div id="loading-overlay" class="absolute inset-0 bg-gray-900 bg-opacity-70 flex items-center justify-center rounded-lg hidden">
+                            <div class="text-white text-center">
+                                <div class="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-white mb-2"></div>
+                                <p>Processing...</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4 flex justify-center">
+                        <button id="capture-btn" class="px-6 py-3 bg-green-600 text-white font-medium rounded-lg shadow-md hover:bg-green-700 transition duration-300 flex items-center">
+                            <i class="fas fa-camera mr-2"></i> Mark Attendance
+                        </button>
+                    </div>
+                </div>
+                
+                <div id="result-container" class="hidden">
+                    <!-- This will be populated with the result -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    {% if not already_attended and lecture.is_active() %}
+    // Camera access and face recognition
+    const video = document.getElementById('video');
+    const captureBtn = document.getElementById('capture-btn');
+    const loadingOverlay = document.getElementById('loading-overlay');
+    const resultContainer = document.getElementById('result-container');
+    const attendanceStatus = document.getElementById('attendance-status');
+    const cameraContainer = document.getElementById('camera-container');
+    
+    // Access the user's camera
+    async function startVideo() {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            video.srcObject = stream;
+        } catch (err) {
+            console.error("Error accessing camera:", err);
+            attendanceStatus.innerHTML = `
+                <div class="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 rounded">
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-exclamation-circle mt-1"></i>
+                        </div>
+                        <div class="ml-3">
+                            <p class="text-sm font-medium">
+                                Error accessing camera.
+                            </p>
+                            <p class="text-sm mt-1">
+                                Please ensure your camera is connected and you've granted permission to use it.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            `;
+            cameraContainer.classList.add('hidden');
+        }
+    }
+    
+    // Capture image and send to server
+    captureBtn.addEventListener('click', async () => {
+        // Show loading overlay
+        loadingOverlay.classList.remove('hidden');
+        
+        // Create a canvas element to capture the current video frame
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        
+        // Convert the canvas to a blob
+        canvas.toBlob(async (blob) => {
+            // Create form data to send to server
+            const formData = new FormData();
+            formData.append('image', blob, 'attendance.jpg');
+            
+            try {
+                // Send to server
+                const response = await fetch("{{ url_for('courses.process_lecture_attendance', lecture_id=lecture.id) }}", {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                // Hide loading overlay
+                loadingOverlay.classList.add('hidden');
+                
+                // Display result
+                if (result.recognized) {
+                    // Success - attendance marked
+                    resultContainer.innerHTML = `
+                        <div class="bg-green-50 border-l-4 border-green-500 text-green-700 p-4 rounded">
+                            <div class="flex">
+                                <div class="flex-shrink-0">
+                                    <i class="fas fa-check-circle mt-1"></i>
+                                </div>
+                                <div class="ml-3">
+                                    <p class="text-sm font-medium">
+                                        Attendance marked successfully!
+                                    </p>
+                                    <p class="text-sm mt-1">
+                                        Your attendance has been recorded for this lecture.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    // Hide camera after successful attendance
+                    cameraContainer.classList.add('hidden');
+                    attendanceStatus.classList.add('hidden');
+                } else {
+                    // Face not recognized
+                    resultContainer.innerHTML = `
+                        <div class="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 rounded">
+                            <div class="flex">
+                                <div class="flex-shrink-0">
+                                    <i class="fas fa-exclamation-circle mt-1"></i>
+                                </div>
+                                <div class="ml-3">
+                                    <p class="text-sm font-medium">
+                                        Face not recognized.
+                                    </p>
+                                    <p class="text-sm mt-1">
+                                        ${result.message || 'Please ensure your face is clearly visible and try again.'}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                resultContainer.classList.remove('hidden');
+                
+            } catch (error) {
+                console.error("Error marking attendance:", error);
+                loadingOverlay.classList.add('hidden');
+                
+                resultContainer.innerHTML = `
+                    <div class="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 rounded">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <i class="fas fa-exclamation-circle mt-1"></i>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm font-medium">
+                                    Error marking attendance.
+                                </p>
+                                <p class="text-sm mt-1">
+                                    Please try again or contact your instructor if the problem persists.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                resultContainer.classList.remove('hidden');
+            }
+        }, 'image/jpeg', 0.9);
+    });
+    
+    // Start the video when the page loads
+    startVideo();
+    {% endif %}
+</script>
+{% endblock %}
+

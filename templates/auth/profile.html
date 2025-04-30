@@ -1,0 +1,315 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <div class="bg-white shadow-md rounded-lg overflow-hidden">
+        <div class="md:flex">
+            <div class="md:w-1/3 bg-gradient-to-br from-blue-700 to-indigo-800 p-6 text-white">
+                <div class="flex flex-col items-center">
+                    <div class="w-32 h-32 rounded-full overflow-hidden border-4 border-white/30 mb-4">
+                        <img src="{{ current_user.get_profile_pic_url() }}" alt="{{ current_user.name }}" class="w-full h-full object-cover">
+                    </div>
+                    <h2 class="text-xl font-bold">{{ current_user.name }}</h2>
+                    <p class="text-blue-200 text-sm">{{ current_user.email }}</p>
+                    <div class="mt-2 px-3 py-1 bg-white/20 rounded-full text-sm">
+                        {{ 'Administrator' if current_user.is_admin else 'Student' }}
+                    </div>
+
+                    <div class="mt-6 w-full">
+                        <a href="{{ url_for('auth.edit_profile') }}" class="block w-full text-center bg-white/10 hover:bg-white/20 text-white py-2 px-4 rounded-lg transition">
+                            <i class="fas fa-edit mr-2"></i>Edit Profile
+                        </a>
+
+                        <button id="downloadCardBtn" class="block w-full text-center bg-white/10 hover:bg-white/20 text-white py-2 px-4 rounded-lg transition mt-2">
+                            <i class="fas fa-id-card mr-2"></i>Download ID Card
+                        </button>
+
+                        <a href="{{ url_for('auth.get_qr_code', user_id=current_user.id) }}" target="_blank" class="block w-full text-center bg-white/10 hover:bg-white/20 text-white py-2 px-4 rounded-lg transition mt-2">
+                            <i class="fas fa-qrcode mr-2"></i>View QR Code
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="md:w-2/3 p-6">
+                <h3 class="text-xl font-bold text-gray-800 mb-4">Profile Information</h3>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <div class="bg-white border rounded-lg p-4 shadow-sm">
+                        <div class="space-y-4">
+                            <div>
+                                <h4 class="text-sm font-medium text-gray-500">Full Name</h4>
+                                <p class="text-gray-800 font-medium">{{ current_user.name }}</p>
+                            </div>
+
+                            <div>
+                                <h4 class="text-sm font-medium text-gray-500">Email Address</h4>
+                                <p class="text-gray-800">{{ current_user.email }}</p>
+                            </div>
+
+                            {% if current_user.custom_data %}
+                            <div>
+                                <h4 class="text-sm font-medium text-gray-500">Student ID</h4>
+                                <p class="text-gray-800">{{ current_user.id }}</p>
+                            </div>
+                            {% endif %}
+
+                            <div>
+                                <h4 class="text-sm font-medium text-gray-500">Account Type</h4>
+                                <p class="text-gray-800">
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {% if current_user.is_admin %}bg-purple-100 text-purple-800{% else %}bg-green-100 text-green-800{% endif %}">
+                                        {{ 'Administrator' if current_user.is_admin else 'Student' }}
+                                    </span>
+                                </p>
+                            </div>
+
+                            <div>
+                                <h4 class="text-sm font-medium text-gray-500">Registered On</h4>
+                                <p class="text-gray-800">{{ current_user.created_at.strftime('%d %B %Y') }}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white border rounded-lg p-4 shadow-sm">
+                        <h4 class="font-medium text-gray-800 mb-4">Activity Statistics</h4>
+
+                        <div class="space-y-4">
+                            <div>
+                                <div class="flex justify-between mb-1">
+                                    <span class="text-sm font-medium text-gray-500">Attendance Records</span>
+                                    <span class="text-sm font-medium text-gray-700">{{ current_user.attendances|length }}</span>
+                                </div>
+                                <div class="w-full bg-gray-200 rounded-full h-2">
+                                    <div class="bg-green-500 h-2 rounded-full" style="width: {{ min((current_user.attendances|length / 100) * 100, 100) }}%"></div>
+                                </div>
+                            </div>
+
+                            {% if not current_user.is_admin %}
+                            <div>
+                                <div class="flex justify-between mb-1">
+                                    <span class="text-sm font-medium text-gray-500">Attendance Rate</span>
+                                    <span class="text-sm font-medium text-gray-700">{{ current_user.get_attendance_percentage() }}%</span>
+                                </div>
+                                <div class="w-full bg-gray-200 rounded-full h-2">
+                                    <div class="bg-yellow-500 h-2 rounded-full" style="width: {{ current_user.get_attendance_percentage() }}%"></div>
+                                </div>
+                            </div>
+                            {% endif %}
+
+                            {% if not current_user.is_admin %}
+                            <div>
+                                <div class="flex justify-between mb-1">
+                                    <span class="text-sm font-medium text-gray-500">Courses Enrolled</span>
+                                    <span class="text-sm font-medium text-gray-700">{{ current_user.enrollments|length }}</span>
+                                </div>
+                                <div class="w-full bg-gray-200 rounded-full h-2">
+                                    <div class="bg-blue-500 h-2 rounded-full" style="width: {{ (current_user.enrollments|length / 10) * 100 }}%"></div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <div class="flex justify-between mb-1">
+                                    <span class="text-sm font-medium text-gray-500">Materials Viewed</span>
+                                    <span class="text-sm font-medium text-gray-700">{{ current_user.material_views|length }}</span>
+                                </div>
+                                <div class="w-full bg-gray-200 rounded-full h-2">
+                                    <div class="bg-purple-500 h-2 rounded-full" style="width: {{ (current_user.material_views|length / 50) * 100 }}%"></div>
+                                </div>
+                            </div>
+                            {% endif %}
+
+                            <div class="pt-2">
+                                <h5 class="text-sm font-medium text-gray-500 mb-2">Last Login</h5>
+                                <p class="text-gray-800">{{ current_user.get_last_login().strftime('%d %b %Y, %H:%M') }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-8 border-t border-gray-200 pt-4">
+                    <h3 class="text-xl font-bold text-gray-800 mb-4">Recent Activity</h3>
+
+                    {% if timeline %}
+                    <div class="space-y-4">
+                        {% for item in timeline %}
+                        <div class="bg-white border rounded-lg shadow-sm hover:shadow-md transition overflow-hidden">
+                            <div class="flex items-center p-4">
+                                <div class="flex-shrink-0 mr-4">
+                                    {% if item.type == 'attendance' %}
+                                    <div class="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
+                                        <i class="fas fa-clipboard-check text-green-600"></i>
+                                    </div>
+                                    {% else %}
+                                    <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+                                        <i class="fas fa-file-alt text-blue-600"></i>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                <div class="flex-1">
+                                    <div class="flex justify-between items-start">
+                                        <div>
+                                            {% if item.type == 'attendance' %}
+                                                {% if item.lecture %}
+                                                <p class="font-medium text-gray-800">Attended: {{ item.lecture.title }}</p>
+                                                {% else %}
+                                                <p class="font-medium text-gray-800">Marked Attendance</p>
+                                                {% endif %}
+                                            {% else %}
+                                                <p class="font-medium text-gray-800">
+                                                    {% if item.downloaded %}Downloaded{% else %}Viewed{% endif %}:
+                                                    {{ item.material.title }}
+                                                </p>
+                                            {% endif %}
+
+                                            {% if item.course %}
+                                            <p class="text-sm text-gray-600">{{ item.course.code }} - {{ item.course.name }}</p>
+                                            {% endif %}
+                                        </div>
+                                        <span class="text-xs text-gray-500">{{ item.timestamp.strftime('%d %b %Y, %H:%M') }}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {% if item.type == 'attendance' and item.lecture %}
+                            <div class="bg-gray-50 px-4 py-2 border-t text-sm">
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">
+                                        <i class="fas fa-map-marker-alt mr-1"></i> {{ item.lecture.location or 'No location' }}
+                                    </span>
+                                    <span class="text-gray-600">
+                                        <i class="fas fa-clock mr-1"></i> {{ item.lecture.start_time.strftime('%H:%M') }} - {{ item.lecture.end_time.strftime('%H:%M') }}
+                                    </span>
+                                </div>
+                            </div>
+                            {% endif %}
+
+                            {% if item.type == 'material_view' and item.material %}
+                            <div class="bg-gray-50 px-4 py-2 border-t text-sm">
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">
+                                        <i class="fas fa-file mr-1"></i> {{ item.material.file_type.upper() }}
+                                    </span>
+                                    <a href="{{ url_for('courses.view_material', material_id=item.material.id) }}" class="text-blue-600 hover:text-blue-800">
+                                        <i class="fas fa-download mr-1"></i> Download Again
+                                    </a>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="bg-gray-50 rounded-lg p-6 text-center">
+                        <div class="w-16 h-16 mx-auto mb-4 bg-blue-100 rounded-full flex items-center justify-center">
+                            <i class="fas fa-calendar-check text-blue-500 text-2xl"></i>
+                        </div>
+                        <h4 class="text-lg font-medium text-gray-800 mb-2">No Recent Activity</h4>
+                        <p class="text-gray-600">Your attendance records and course activity will appear here.</p>
+
+                        {% if not current_user.is_admin %}
+                        <a href="{{ url_for('courses.index') }}" class="mt-4 inline-block px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+                            <i class="fas fa-book mr-2"></i>Browse Courses
+                        </a>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Toast notification for card generation -->
+<div id="cardToast" class="fixed bottom-4 right-4 bg-white rounded-lg shadow-lg p-4 w-80 transform transition-transform duration-300 translate-y-full" style="z-index: 9999;">
+    <div class="flex items-start mb-2">
+        <div class="flex-1">
+            <h3 class="font-bold text-gray-900">Generating ID Card</h3>
+            <p id="toastQuote" class="text-sm text-gray-600">Waiting is for giants...</p>
+        </div>
+        <button onclick="hideToast()" class="text-gray-400 hover:text-gray-600">
+            <i class="fas fa-times"></i>
+        </button>
+    </div>
+    <div class="w-full bg-gray-200 rounded-full h-2.5 mb-2">
+        <div id="toastProgress" class="bg-blue-600 h-2.5 rounded-full" style="width: 0%"></div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Array of inspirational quotes
+    const quotes = [
+        "Waiting is for giants...",
+        "Patience is a virtue worth cultivating...",
+        "Good things come to those who wait...",
+        "The best things in life are worth waiting for...",
+        "Patience is not the ability to wait, but how you act while waiting...",
+        "Everything comes to you at the right moment...",
+        "Patience is bitter, but its fruit is sweet...",
+        "The two most powerful warriors are patience and time..."
+    ];
+
+    // Function to show toast with progress
+    function showToast() {
+        const toast = document.getElementById('cardToast');
+        toast.classList.remove('translate-y-full');
+        updateProgress(0);
+    }
+
+    // Function to hide toast
+    function hideToast() {
+        const toast = document.getElementById('cardToast');
+        toast.classList.add('translate-y-full');
+    }
+
+    // Function to update progress and quote
+    function updateProgress(progress) {
+        const progressBar = document.getElementById('toastProgress');
+        const quoteElement = document.getElementById('toastQuote');
+
+        progressBar.style.width = progress + '%';
+
+        // Change quote every 20%
+        if (progress % 20 === 0) {
+            const randomQuote = quotes[Math.floor(Math.random() * quotes.length)];
+            quoteElement.textContent = randomQuote;
+        }
+    }
+
+    // Handle download card button click
+    document.getElementById('downloadCardBtn').addEventListener('click', function() {
+        showToast();
+
+        // Simulate progress
+        let progress = 0;
+        const interval = setInterval(function() {
+            progress += 5;
+            updateProgress(progress);
+
+            if (progress >= 100) {
+                clearInterval(interval);
+                setTimeout(function() {
+                    // Redirect to download card URL
+                    window.location.href = "{{ url_for('auth.download_profile_card') }}";
+                    // Hide toast after a delay
+                    setTimeout(hideToast, 1000);
+                }, 500);
+            }
+        }, 200); // Update every 200ms for a total of ~4 seconds
+    });
+
+    // Show welcome toast when page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        setTimeout(() => {
+            Alpine.evaluate(document.body, '$data.add("Welcome to your profile, {{ current_user.name }}!", "success", 3000)');
+
+            {% if timeline %}
+            setTimeout(() => {
+                Alpine.evaluate(document.body, '$data.add("You have {{ timeline|length }} recent activities", "info", 3000)');
+            }, 3500);
+            {% endif %}
+        }, 500);
+    });
+</script>
+{% endblock %}

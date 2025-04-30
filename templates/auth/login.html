@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-md mx-auto" x-data="loginForm()">
+    <h1 class="text-3xl font-bold mb-6 text-center">Login</h1>
+    
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <div class="mb-6">
+            <ul class="flex border-b">
+                <li class="mr-1" :class="{'border-b-2 border-blue-500': loginMethod === 'face'}">
+                    <button @click="loginMethod = 'face'" 
+                            class="py-2 px-4 font-semibold" 
+                            :class="loginMethod === 'face' ? 'text-blue-600' : 'text-gray-500'">
+                        <i class="fas fa-camera mr-2"></i>Face Login
+                    </button>
+                </li>
+                <li class="mr-1" :class="{'border-b-2 border-blue-500': loginMethod === 'email'}">
+                    <button @click="loginMethod = 'email'" 
+                            class="py-2 px-4 font-semibold"
+                            :class="loginMethod === 'email' ? 'text-blue-600' : 'text-gray-500'">
+                        <i class="fas fa-envelope mr-2"></i>Email Login
+                    </button>
+                </li>
+            </ul>
+        </div>
+        
+        <!-- Face Recognition Login -->
+        <div x-show="loginMethod === 'face'" x-cloak>
+            <div class="mb-4">
+                <div class="relative">
+                    <video x-ref="video" class="w-full rounded border" autoplay playsinline></video>
+                    <canvas x-ref="canvas" style="display: none;"></canvas>
+                    
+                    <div x-show="processingImage" class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded">
+                        <div class="text-white text-center">
+                            <i class="fas fa-spinner fa-spin text-2xl"></i>
+                            <p class="mt-2">Recognizing...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <button @click="captureFace" 
+                    class="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg font-semibold"
+                    :disabled="processingImage">
+                <i class="fas fa-camera mr-2"></i>Login with Face
+            </button>
+            
+            <div class="mt-4 text-center text-sm text-gray-600">
+                <p>Position your face in the camera and click the button</p>
+            </div>
+        </div>
+        
+        <!-- Email Login -->
+        <div x-show="loginMethod === 'email'" x-cloak>
+            <form action="{{ url_for('auth.login') }}" method="POST">
+                <div class="mb-4">
+                    <label for="email" class="block text-gray-700 font-semibold mb-2">Email</label>
+                    <input type="email" id="email" name="email" required
+                           class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                
+                <div class="mb-6">
+                    <label for="password" class="block text-gray-700 font-semibold mb-2">Password</label>
+                    <input type="password" id="password" name="password" required
+                           class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                
+                <button type="submit" class="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg font-semibold">
+                    <i class="fas fa-sign-in-alt mr-2"></i>Login
+                </button>
+            </form>
+        </div>
+        
+        <div class="mt-6 text-center">
+            <p class="text-gray-600">Don't have an account? <a href="{{ url_for('auth.register') }}" class="text-blue-500 hover:underline">Register</a></p>
+        </div>
+    </div>
+</div>
+
+<script>
+    function loginForm() {
+        return {
+            loginMethod: 'face',
+            processingImage: false,
+            
+            init() {
+                if (this.loginMethod === 'face') {
+                    this.startCamera();
+                }
+            },
+            
+            startCamera() {
+                const video = this.$refs.video;
+                
+                if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                    navigator.mediaDevices.getUserMedia({ video: true })
+                        .then(stream => {
+                            video.srcObject = stream;
+                        })
+                        .catch(err => {
+                            console.error("Error accessing the camera: ", err);
+                            this.loginMethod = 'email';
+                        });
+                } else {
+                    this.loginMethod = 'email';
+                }
+            },
+            
+            captureFace() {
+                const video = this.$refs.video;
+                const canvas = this.$refs.canvas;
+                
+                if (video.readyState !== video.HAVE_ENOUGH_DATA) {
+                    return;
+                }
+                
+                this.processingImage = true;
+                
+                // Set canvas dimensions to match video
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                
+                // Draw the video frame to the canvas
+                const context = canvas.getContext('2d');
+                context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                
+                // Convert canvas to blob and send to server
+                canvas.toBlob(blob => {
+                    const formData = new FormData();
+                    formData.append('image', blob, 'face.jpg');
+                    
+                    fetch('{{ url_for("auth.login") }}', {
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(response => {
+                        if (response.redirected) {
+                            window.location.href = response.url;
+                        } else {
+                            return response.text();
+                        }
+                    })
+                    .then(html => {
+                        if (html) {
+                            document.open();
+                            document.write(html);
+                            document.close();
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        this.processingImage = false;
+                    });
+                }, 'image/jpeg', 0.8);
+            }
+        }
+    }
+</script>
+{% endblock %}

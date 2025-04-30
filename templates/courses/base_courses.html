@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="py-8">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <!-- Course Header -->
+        <div class="mb-6 flex flex-wrap items-center justify-between">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-800">{{ course.name }}</h1>
+                {% if course.code %}
+                <p class="text-gray-600">{{ course.code }}</p>
+                {% endif %}
+            </div>
+            
+            {% if course.id and (current_user.is_admin or current_user.id == course.instructor_id) %}
+                <div class="mt-4 sm:mt-0">
+                    <a href="{{ url_for('courses.edit_course', course_id=course.id) }}" class="px-4 py-2 bg-blue-600 text-white rounded-lg shadow hover:bg-blue-700 transition">
+                        <i class="fas fa-edit mr-2"></i>Edit Course
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+        
+        <!-- Course Navigation -->
+        {% if course.id %}
+        <div class="mb-8 border-b border-gray-200">
+            <nav class="-mb-px flex space-x-8">
+                <a href="{{ url_for('courses.view_course', course_id=course.id) }}" 
+                   class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm
+                          {% if request.endpoint == 'courses.view_course' %}
+                          border-blue-500 text-blue-600
+                          {% else %}
+                          border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300
+                          {% endif %}">
+                    <i class="fas fa-home mr-2"></i>Overview
+                </a>
+                
+                <a href="{{ url_for('courses.course_lectures', course_id=course.id) }}" 
+                   class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm
+                          {% if request.endpoint == 'courses.course_lectures' or request.endpoint == 'courses.new_lecture' or request.endpoint == 'courses.edit_lecture' %}
+                          border-blue-500 text-blue-600
+                          {% else %}
+                          border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300
+                          {% endif %}">
+                    <i class="fas fa-chalkboard mr-2"></i>Lectures
+                </a>
+                
+                <a href="{{ url_for('courses.course_materials', course_id=course.id) }}" 
+                   class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm
+                          {% if request.endpoint == 'courses.course_materials' or request.endpoint == 'courses.new_material' or request.endpoint == 'courses.edit_material' %}
+                          border-blue-500 text-blue-600
+                          {% else %}
+                          border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300
+                          {% endif %}">
+                    <i class="fas fa-book mr-2"></i>Materials
+                </a>
+                
+                {% if current_user.is_admin or current_user.id == course.instructor_id %}
+                <a href="{{ url_for('courses.course_enrollments', course_id=course.id) }}" 
+                   class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm
+                          {% if request.endpoint == 'courses.course_enrollments' %}
+                          border-blue-500 text-blue-600
+                          {% else %}
+                          border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300
+                          {% endif %}">
+                    <i class="fas fa-users mr-2"></i>Students
+                </a>
+                
+                <a href="{{ url_for('courses.course_attendance', course_id=course.id) }}" 
+                   class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm
+                          {% if request.endpoint == 'courses.course_attendance' %}
+                          border-blue-500 text-blue-600
+                          {% else %}
+                          border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300
+                          {% endif %}">
+                    <i class="fas fa-clipboard-check mr-2"></i>Attendance
+                </a>
+                {% endif %}
+            </nav>
+        </div>
+        {% endif %}
+        
+        <!-- Course Content -->
+        {% block course_content %}{% endblock %}
+    </div>
+</div>
+{% endblock %}

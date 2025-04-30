@@ -1,0 +1,151 @@
+{% extends "courses/base_courses.html" %}
+
+{% block course_content %}
+<div class="mb-6">
+    <a href="{{ url_for('courses.view_course', course_id=course.id) }}" class="text-blue-600 hover:text-blue-800">
+        <i class="fas fa-arrow-left mr-1"></i> Back to {{ course.name }}
+    </a>
+</div>
+
+<div class="mb-6 flex justify-between items-center">
+    <div>
+        <h1 class="text-3xl font-bold text-gray-800">Course Materials</h1>
+        <p class="text-gray-600">{{ course.name }} ({{ course.code }})</p>
+    </div>
+    <a href="{{ url_for('courses.new_material', course_id=course.id) }}" class="px-4 py-2 bg-blue-600 text-white rounded-lg shadow hover:bg-blue-700 transition">
+        <i class="fas fa-plus mr-2"></i>Upload Material
+    </a>
+</div>
+
+{% if materials_by_week %}
+    <div class="space-y-6">
+        {% for week_number, materials in materials_by_week.items()|sort %}
+        <div class="bg-white rounded-lg shadow-md overflow-hidden">
+            <div class="bg-green-600 text-white px-4 py-2 font-medium flex justify-between items-center">
+                <span>Week {{ week_number }}</span>
+                <span class="text-sm">{{ materials|length }} material(s)</span>
+            </div>
+            <div class="p-0">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Title
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Type
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Uploaded
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Views
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Actions
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for material in materials|sort(attribute='title') %}
+                        <tr>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm font-medium text-gray-900">{{ material.title }}</div>
+                                {% if material.description %}
+                                <div class="text-sm text-gray-500">{{ material.description|truncate(50) }}</div>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="flex items-center">
+                                    {% if material.file_type == 'pdf' %}
+                                        <i class="fas fa-file-pdf text-red-500 mr-2"></i>
+                                    {% elif material.file_type in ['doc', 'docx'] %}
+                                        <i class="fas fa-file-word text-blue-500 mr-2"></i>
+                                    {% elif material.file_type in ['ppt', 'pptx'] %}
+                                        <i class="fas fa-file-powerpoint text-orange-500 mr-2"></i>
+                                    {% elif material.file_type in ['xls', 'xlsx'] %}
+                                        <i class="fas fa-file-excel text-green-500 mr-2"></i>
+                                    {% else %}
+                                        <i class="fas fa-file text-gray-500 mr-2"></i>
+                                    {% endif %}
+                                    <span class="text-sm text-gray-900">{{ material.file_type.upper() }}</span>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {{ material.uploaded_at.strftime('%d %b %Y') }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {{ material.get_view_count() }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                <div class="flex justify-end space-x-2">
+                                    <a href="{{ url_for('courses.view_material', material_id=material.id) }}" class="text-blue-600 hover:text-blue-900">
+                                        <i class="fas fa-download"></i>
+                                    </a>
+                                    <a href="{{ url_for('courses.edit_material', material_id=material.id) }}" class="text-indigo-600 hover:text-indigo-900">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <button onclick="confirmDelete('{{ material.id }}', '{{ material.title }}')" class="text-red-600 hover:text-red-900">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    
+    <!-- Delete Confirmation Modal -->
+    <div id="deleteModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center hidden z-50">
+        <div class="bg-white rounded-lg shadow-xl p-6 max-w-md w-full">
+            <h3 class="text-xl font-bold text-gray-900 mb-4">Confirm Deletion</h3>
+            <p class="text-gray-700 mb-6">
+                Are you sure you want to delete the material "<span id="materialName"></span>"? 
+                This action cannot be undone.
+            </p>
+            <div class="flex justify-end space-x-3">
+                <button onclick="closeDeleteModal()" class="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 transition">
+                    Cancel
+                </button>
+                <form id="deleteForm" method="POST" action="">
+                    <button type="submit" class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition">
+                        Delete
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+{% else %}
+    <div class="bg-blue-50 border-l-4 border-blue-500 text-blue-700 p-4 rounded">
+        <div class="flex">
+            <div class="flex-shrink-0">
+                <i class="fas fa-info-circle mt-1"></i>
+            </div>
+            <div class="ml-3">
+                <p class="text-sm">
+                    No materials found for this course. Upload a new material to get started.
+                </p>
+            </div>
+        </div>
+    </div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function confirmDelete(materialId, materialName) {
+        document.getElementById('materialName').textContent = materialName;
+        document.getElementById('deleteForm').action = "{{ url_for('courses.delete_material', material_id=0) }}".replace('0', materialId);
+        document.getElementById('deleteModal').classList.remove('hidden');
+    }
+    
+    function closeDeleteModal() {
+        document.getElementById('deleteModal').classList.add('hidden');
+    }
+</script>
+{% endblock %}
+
