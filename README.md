@@ -1,4 +1,4 @@
-```markdown
+
 ![UniFAS Screenshot](screenshots/index.png)
 
 # 🌐 UniFAS - Face Recognition Attendance System v2.0
